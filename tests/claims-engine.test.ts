@@ -60,6 +60,31 @@ test("claim results distinguish proven, failed, and unverified evidence", async 
     const report = await verifyRepository(repository, [], verifierRegistry, task);
     assert.deepEqual(report.agentClaimResults.map((result) => result.status), ["proven", "failed", "failed", "unverified", "unverified"]);
     assert.equal(report.summary.done, false);
+    assert.deepEqual(report.definitionOfDoneSummary, { proven: 0, failed: 0, unverified: 0, satisfied: true });
+    assert.deepEqual(report.agentClaimSummary, { proven: 1, failed: 2, unverified: 2 });
+  } finally { await removeRepository(root); }
+});
+
+test("unverified extra claims do not block a proven task, but failed claims do", async () => {
+  const root = await createRepository();
+  try {
+    const repository: RepositoryEvidence = {
+      root,
+      changes: [{ path: "src/math.js", status: "M", additions: 3, deletions: 1, untracked: false }],
+      testFiles: [],
+    };
+    const definition = [{ id: "implementation", title: "Implementation changed", verifier: { type: "changes-exist" as const } }];
+    const semantic: AgentClaim = { id: "semantic", originalText: "Implemented division-by-zero handling.", type: "implementation-result", source: { type: "manual" } };
+    const provenTask = session(root, [semantic]);
+    const report = await verifyRepository(repository, definition, verifierRegistry, provenTask);
+    assert.equal(report.definitionOfDoneSummary.satisfied, true);
+    assert.equal(report.agentClaimSummary.unverified, 1);
+    assert.equal(report.verdict, "done");
+
+    const falseFile: AgentClaim = { id: "false-file", originalText: "Updated README.md.", type: "file-changed", normalized: { path: "README.md", action: "changed" }, source: { type: "manual" } };
+    const contradicted = await verifyRepository(repository, definition, verifierRegistry, session(root, [falseFile]));
+    assert.equal(contradicted.agentClaimResults[0]?.status, "failed");
+    assert.equal(contradicted.verdict, "not_done");
   } finally { await removeRepository(root); }
 });
 

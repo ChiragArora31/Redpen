@@ -139,13 +139,15 @@ export interface Verifier {
 }
 
 export interface RedpenReport {
-  schemaVersion: 5;
+  schemaVersion: 6;
   redpenVersion: string;
   timestamp: string;
   repository: {
     root: string;
   };
   summary: Record<VerificationStatus, number> & { done: boolean };
+  definitionOfDoneSummary: Record<VerificationStatus, number> & { satisfied: boolean };
+  agentClaimSummary: Record<VerificationStatus, number>;
   verdict: "done" | "not_done";
   session?: {
     id: string;

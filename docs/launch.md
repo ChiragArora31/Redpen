@@ -49,9 +49,12 @@ Use the final demo frame containing the four proven agent claims, the unverified
 ```text
 8 proven · 0 failed · 1 unverified
 
-NOT DONE
+DONE
 
-One claim still needs evidence.
+Definition of Done is proven.
+
+1 additional claim remains unverified.
+They may be correct. Redpen just can't prove them yet.
 ```
 
 That frame explains both the product and its restraint.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Exclude dependency and generated directories from repository evidence
+- Clarify that extra unverified claims do not expand the Definition of Done
+- Reduce noisy claim splitting for structured completion messages
+
 ## 0.1.0
 
 First public release.

@@ -15,5 +15,7 @@ test("summarizes statuses and requires every check for a done verdict", async ()
   }]));
   const report = await verifyRepository(repository, definition, verifiers);
   assert.deepEqual(report.summary, { proven: 1, failed: 1, unverified: 1, done: false });
+  assert.deepEqual(report.definitionOfDoneSummary, { proven: 1, failed: 1, unverified: 1, satisfied: false });
+  assert.deepEqual(report.agentClaimSummary, { proven: 0, failed: 0, unverified: 0 });
   assert.equal(report.verdict, "not_done");
 });

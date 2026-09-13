@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { collectChangesSinceTree, createWorktreeSnapshot } from "../src/repository/git.js";
+import { collectRepository } from "../src/repository/collect.js";
 import { createRepository, git, put, removeRepository } from "./helpers.js";
 
 test("does not attribute pre-existing dirty or untracked files to the task", async () => {
@@ -52,5 +53,25 @@ test("continues to detect task changes after they are committed", async () => {
     await git(root, ["commit", "--quiet", "-m", "agent work"]);
     const changes = await collectChangesSinceTree(root, baseline);
     assert.deepEqual(changes.map((change) => change.path), ["src/index.ts"]);
+  } finally { await removeRepository(root); }
+});
+
+test("dependency and generated tests never contaminate regression evidence", async () => {
+  const root = await createRepository({
+    "src/math.js": "export const divide = (a, b) => a / b;\n",
+    "tests/math.test.js": "// baseline test\n",
+  });
+  try {
+    const baseline = await createWorktreeSnapshot(root);
+    await put(root, "node_modules/dependency/test/index.js", "// dependency test\n");
+    await put(root, "dist/generated.test.js", "// generated test\n");
+    await put(root, "coverage/report.test.js", "// coverage artifact\n");
+    await put(root, "vendor/library/spec/helper.js", "// vendored test\n");
+    await put(root, ".venv/lib/test_module.py", "# environment test\n");
+    await put(root, "tests/math.test.js", "// baseline test\n// division by zero regression\n");
+
+    const repository = await collectRepository(root, baseline);
+    assert.deepEqual(repository.changes.map((change) => change.path), ["tests/math.test.js"]);
+    assert.deepEqual(repository.testFiles.map((change) => change.path), ["tests/math.test.js"]);
   } finally { await removeRepository(root); }
 });

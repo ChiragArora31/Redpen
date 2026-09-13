@@ -44,6 +44,12 @@ git commit -qm "demo baseline"
 
 node "$repo_root/dist/cli.js" start "Fix pagination when cursor is null"
 
+# Simulate dependency tests appearing after the baseline. They must never count as task evidence.
+mkdir -p node_modules/example-dependency/test
+cat > node_modules/example-dependency/test/index.js <<'EOF'
+// dependency-owned test fixture
+EOF
+
 cat > src/pagination.mjs <<'EOF'
 export function page(items, cursor) {
   const start = cursor ?? 0;
@@ -65,7 +71,7 @@ node "$repo_root/dist/cli.js" check --no-color --timeout 30
 exit_code=$?
 set -e
 
-if [[ "$exit_code" -ne 1 ]]; then
-  echo "Demo expected a NOT DONE verdict (exit 1), received exit $exit_code." >&2
+if [[ "$exit_code" -ne 0 ]]; then
+  echo "Demo expected a DONE verdict (exit 0), received exit $exit_code." >&2
   exit 2
 fi

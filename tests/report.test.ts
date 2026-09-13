@@ -26,7 +26,7 @@ test("serializes the task, definition, result, and evidence chain", async () => 
     const report = await verifyRepository(repository, session.definitionOfDone, verifierRegistry, session);
     const path = await writeJsonReport(report, root);
     const stored = JSON.parse(await readFile(path, "utf8")) as typeof report;
-    assert.equal(stored.schemaVersion, 5);
+    assert.equal(stored.schemaVersion, 6);
     assert.equal(stored.task?.description, "Change the exported value in .");
     assert.equal(stored.definitionOfDone[0]?.id, stored.definitionOfDoneResults[0]?.id);
     assert.equal(stored.definitionOfDoneResults[0]?.status, "proven");
@@ -42,5 +42,7 @@ test("serializes the task, definition, result, and evidence chain", async () => 
     assert.equal(stored.agentSession?.workingDirectory, ".");
     assert.doesNotMatch(JSON.stringify(stored), new RegExp(root.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     assert.equal(stored.verdict, "done");
+    assert.equal(stored.definitionOfDoneSummary.satisfied, true);
+    assert.deepEqual(stored.agentClaimSummary, { proven: 1, failed: 0, unverified: 0 });
   } finally { await removeRepository(root); }
 });

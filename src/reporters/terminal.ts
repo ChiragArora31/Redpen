@@ -41,13 +41,19 @@ export function renderTerminal(report: RedpenReport, color = process.stdout.isTT
     `${report.summary.proven} proven · ${report.summary.failed} failed · ${report.summary.unverified} unverified`,
     "",
   );
-  if (report.verdict === "done") lines.push("A+", "", "You may now say \"done.\"");
-  else {
+  const unverifiedClaims = report.agentClaimResults.filter((result) => result.status === "unverified").length;
+  const failedClaims = report.agentClaimResults.filter((result) => result.status === "failed").length;
+  const unresolvedDefinition = report.definitionOfDoneResults.filter((result) => result.status !== "proven").length;
+  if (report.verdict === "done" && report.summary.unverified === 0) lines.push("A+", "", "You may now say \"done.\"");
+  else if (report.verdict === "done") {
+    lines.push("DONE", "", "Definition of Done is proven.", "");
+    lines.push(`${unverifiedClaims} additional ${unverifiedClaims === 1 ? "claim remains" : "claims remain"} unverified.`);
+    lines.push("They may be correct. Redpen just can't prove them yet.");
+  } else {
     lines.push("NOT DONE", "");
-    const outstanding = report.summary.failed + report.summary.unverified;
-    const claimOutstanding = report.agentClaimResults.filter((result) => result.status !== "proven").length;
-    if (claimOutstanding === outstanding) lines.push(outstanding === 1 ? "One claim still needs evidence." : `${outstanding} claims still need evidence.`);
-    else lines.push(outstanding === 1 ? "One item still needs evidence." : `${outstanding} items still need evidence.`);
+    if (unresolvedDefinition > 0) lines.push(`${unresolvedDefinition} Definition-of-Done ${unresolvedDefinition === 1 ? "item remains" : "items remain"} unresolved.`);
+    if (failedClaims > 0) lines.push(`${failedClaims} agent ${failedClaims === 1 ? "claim is" : "claims are"} contradicted by evidence.`);
+    if (report.summary.unverified > 0) lines.push("Unverified does not mean false. Redpen just can't prove it yet.");
   }
   return lines.join("\n");
 }

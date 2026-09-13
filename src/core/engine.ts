@@ -52,10 +52,22 @@ export async function verifyRepository(
   const agentClaimResults: ClaimVerificationResult[] = [];
   for (const claim of agentClaims) agentClaimResults.push(await verifyClaim(claim, context, verifiers));
 
-  const counts: Record<VerificationStatus, number> = { proven: 0, failed: 0, unverified: 0 };
-  for (const result of [...definitionOfDoneResults, ...agentClaimResults]) counts[result.status] += 1;
-  const done = counts.failed === 0 && counts.unverified === 0;
-  const summary = { ...counts, done };
+  const countResults = (results: Array<{ status: VerificationStatus }>) => {
+    const counts: Record<VerificationStatus, number> = { proven: 0, failed: 0, unverified: 0 };
+    for (const result of results) counts[result.status] += 1;
+    return counts;
+  };
+  const definitionCounts = countResults(definitionOfDoneResults);
+  const claimCounts = countResults(agentClaimResults);
+  const definitionSatisfied = definitionCounts.failed === 0 && definitionCounts.unverified === 0;
+  // Extra unsupported claims do not expand the task contract. Concrete contradictions still block a trustworthy DONE verdict.
+  const done = definitionSatisfied && claimCounts.failed === 0;
+  const summary = {
+    proven: definitionCounts.proven + claimCounts.proven,
+    failed: definitionCounts.failed + claimCounts.failed,
+    unverified: definitionCounts.unverified + claimCounts.unverified,
+    done,
+  };
   let agentRanInRepository = false;
   const agentWorkingDirectory = session?.agentCompletion?.metadata?.workingDirectory;
   if (agentWorkingDirectory) {
@@ -65,11 +77,13 @@ export async function verifyRepository(
     } catch { agentRanInRepository = resolve(agentWorkingDirectory) === resolve(repository.root); }
   }
   const report: RedpenReport = {
-    schemaVersion: 5,
+    schemaVersion: 6,
     redpenVersion: REDPEN_VERSION,
     timestamp: new Date().toISOString(),
     repository: { root: "." },
     summary,
+    definitionOfDoneSummary: { ...definitionCounts, satisfied: definitionSatisfied },
+    agentClaimSummary: claimCounts,
     verdict: done ? "done" : "not_done",
     ...(session ? { session: { id: session.id, startedAt: session.startedAt }, task: session.task } : {}),
     definitionOfDone,
@@ -118,8 +132,8 @@ async function verifyClaim(
       normalizedType: claim.type,
       status: "unverified",
       reason: claim.type === "implementation-result"
-        ? "Repository changes cannot prove that the claimed behavior is correct."
-        : "No deterministic verifier is available. Redpen doesn't guess.",
+        ? "No deterministic evidence can prove this behavior. Redpen doesn't guess."
+        : "No deterministic evidence is available. Redpen doesn't guess.",
       evidence: [],
     };
   }

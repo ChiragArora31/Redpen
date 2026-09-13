@@ -1,6 +1,6 @@
 {
   "name": "redpen-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A definition-of-done and verification layer for coding agents.",
   "author": "Chirag Arora",
   "type": "module",

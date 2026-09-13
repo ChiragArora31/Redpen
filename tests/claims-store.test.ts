@@ -24,11 +24,13 @@ test("adding claims after a check preserves but does not silently validate the s
   try {
     const session = await startSession(root, "Invalidate report");
     const report = {
-      schemaVersion: 5,
+      schemaVersion: 6,
       redpenVersion: "0.1.0",
       timestamp: new Date().toISOString(),
       repository: { root },
       summary: { proven: 0, failed: 0, unverified: 0, done: true },
+      definitionOfDoneSummary: { proven: 0, failed: 0, unverified: 0, satisfied: true },
+      agentClaimSummary: { proven: 0, failed: 0, unverified: 0 },
       verdict: "done",
       session: { id: session.id, startedAt: session.startedAt },
       task: session.task,

@@ -9,7 +9,7 @@ function normalizeSegment(originalText: string, source: ClaimSource): AgentClaim
   let type: AgentClaimType = "unknown";
   let normalized: Record<string, unknown> | undefined;
 
-  const file = text.match(/\b(added|updated|changed|modified)\s+[`"']?([\w@+./-]+\.[\w-]+)[`"']?/i);
+  const file = text.match(/\b(added|updated|changed|modified)\s+[`"']?([-\w@+./\\]+\.[\w-]+)[`"']?/i);
   if (file?.[1] && file[2]) {
     type = "file-changed";
     normalized = { path: file[2], action: file[1].toLowerCase() === "added" ? "added" : "changed" };
@@ -36,14 +36,36 @@ function normalizeSegment(originalText: string, source: ClaimSource): AgentClaim
 
 function splitClaims(input: string): string[] {
   let inFence = false;
-  const prose = input.split(/\r?\n/).flatMap((line) => {
+  const lines = input.split(/\r?\n/);
+  const prose: string[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!;
     const trimmed = line.trim();
-    if (/^```/.test(trimmed)) { inFence = !inFence; return []; }
-    if (inFence || !trimmed || /^#{1,6}\s+/.test(trimmed)) return [];
-    if (/^\*{0,2}(?:summary|tests?|verification|changes|next steps?|remaining risks?)\*{0,2}:?$/i.test(trimmed)) return [];
-    return [trimmed.replace(/^(?:[-*+]\s+|\d+[.)]\s+)/, "")];
-  }).join("\n");
-  const sentences = prose.split(/(?:\r?\n)+|(?<=[.!?])\s+/).map((value) => value.trim()).filter(Boolean);
+    if (/^```/.test(trimmed)) { inFence = !inFence; continue; }
+    if (inFence || !trimmed || /^#{1,6}\s+/.test(trimmed)) continue;
+    if (/^\*{0,2}(?:summary|tests?|verification|changes|next steps?|remaining risks?)\*{0,2}:?$/i.test(trimmed)) continue;
+
+    const isBullet = /^(?:[-*+]\s+|\d+[.)]\s+)/.test(trimmed);
+    if (!isBullet && trimmed.endsWith(":")) {
+      const details: string[] = [];
+      let detailIndex = index + 1;
+      while (detailIndex < lines.length) {
+        const detail = lines[detailIndex]!.trim();
+        if (!detail) { detailIndex += 1; continue; }
+        if (!/^(?:[-*+]\s+|\d+[.)]\s+)/.test(detail)) break;
+        details.push(detail.replace(/^(?:[-*+]\s+|\d+[.)]\s+)/, "").replace(/[.!?]+$/, ""));
+        detailIndex += 1;
+      }
+      if (details.length > 0) {
+        prose.push(`${trimmed} ${details.join("; ")}.`);
+        index = detailIndex - 1;
+        continue;
+      }
+    }
+    prose.push(trimmed.replace(/^(?:[-*+]\s+|\d+[.)]\s+)/, ""));
+  }
+  const joined = prose.join("\n");
+  const sentences = joined.split(/(?:\r?\n)+|(?<=[.!?])\s+/).map((value) => value.trim()).filter(Boolean);
   return sentences.flatMap((sentence) => {
     const terminal = sentence.match(/[.!?]$/)?.[0] ?? "";
     const body = terminal ? sentence.slice(0, -1) : sentence;

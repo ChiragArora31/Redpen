@@ -46,7 +46,11 @@ export function renderStatus(session: RedpenSession, report?: RedpenReport): str
   lines.push(`${report.summary.proven} proven · ${report.summary.failed} failed · ${report.summary.unverified} unverified`);
   const pendingClaims = (session.agentCompletion?.claims.length ?? 0) - (report.agentClaims?.length ?? 0);
   if (pendingClaims > 0) {
-    lines.push("", `${pendingClaims} new ${pendingClaims === 1 ? "claim" : "claims"} awaiting verification.`, "", "NOT DONE");
-  } else lines.push("", report.verdict === "done" ? "DONE" : "NOT DONE");
+    lines.push("", `${pendingClaims} new ${pendingClaims === 1 ? "claim" : "claims"} awaiting verification.`, "", "CHECK NEEDED");
+  } else {
+    lines.push("", report.verdict === "done" ? "DONE" : "NOT DONE");
+    const unverifiedClaims = report.agentClaimResults.filter((result) => result.status === "unverified").length;
+    if (report.verdict === "done" && unverifiedClaims > 0) lines.push("", `${unverifiedClaims} additional ${unverifiedClaims === 1 ? "claim remains" : "claims remain"} unverified.`);
+  }
   return lines.join("\n");
 }

@@ -17,7 +17,7 @@ npm install
 npm run demo --silent
 ```
 
-The script creates a disposable Git repository, fixes a pagination bug, adds a real regression test, records agent-style claims, and runs the real Redpen CLI. It expects exit code 1 because the backwards-compatibility claim remains unverified. The temporary repository is removed afterward.
+The script creates a disposable Git repository, adds dependency-owned test fixtures, fixes a pagination bug, adds a real regression test, records agent-style claims, and runs the real Redpen CLI. Dependency tests never appear as evidence. It expects exit code 0 because the Definition of Done is proven; the additional backwards-compatibility claim remains visibly unverified. The temporary repository is removed afterward.
 
 Recommended screenshot or GIF sequence:
 
@@ -25,7 +25,7 @@ Recommended screenshot or GIF sequence:
 2. The concise generated Definition of Done.
 3. Five imported-style claims.
 4. Repository, test, and build evidence turning green.
-5. `? "No breaking changes."` followed by `NOT DONE`.
+5. `? "No breaking changes."` followed by `DONE` with a clear unverified-claim note.
 
 The important final frame is the refusal to overclaim:
 
@@ -35,7 +35,10 @@ The important final frame is the refusal to overclaim:
 
 8 proven · 0 failed · 1 unverified
 
-NOT DONE
+DONE
 
-One claim still needs evidence.
+Definition of Done is proven.
+
+1 additional claim remains unverified.
+They may be correct. Redpen just can't prove them yet.
 ```

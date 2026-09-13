@@ -19,6 +19,7 @@ test("normalizes deterministic test, build, implementation, and file claims", ()
     ["Updated src/auth.ts.", "file-changed"],
     ["Changed package.json.", "file-changed"],
     ["Added tests/auth.test.ts.", "file-changed"],
+    ["Updated src\\auth.ts.", "file-changed"],
   ]);
   for (const [text, expected] of cases) assert.equal(parseClaims(text)[0]?.type, expected, text);
 });
@@ -60,4 +61,15 @@ npm test
 \`\`\``);
   assert.deepEqual(claims.map((claim) => claim.originalText), ["Added tests.", "Preserved backwards compatibility."]);
   assert.deepEqual(claims.map((claim) => claim.type), ["tests-changed", "unknown"]);
+});
+
+test("keeps a semantic introduction and its bullet details as one conservative claim", () => {
+  const claims = parseClaims(`Implemented division-by-zero handling:
+- \`divide(a, 0)\` now throws \`RangeError: Cannot divide by zero\`.
+
+Added regression coverage.`);
+  assert.equal(claims.length, 2);
+  assert.equal(claims[0]?.type, "implementation-result");
+  assert.match(claims[0]?.originalText ?? "", /Implemented division-by-zero handling:[\s\S]+RangeError/);
+  assert.equal(claims[1]?.type, "tests-changed");
 });

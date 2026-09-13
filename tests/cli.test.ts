@@ -69,7 +69,7 @@ test("status reads the last report without rerunning checks and reset clears onl
     await exec(process.execPath, [cli, "claims", "No breaking changes were introduced."], { cwd: root });
     const stale = await exec(process.execPath, [cli, "status"], { cwd: root });
     assert.match(stale.stdout, /1 new claim awaiting verification/);
-    assert.match(stale.stdout, /NOT DONE/);
+    assert.match(stale.stdout, /CHECK NEEDED/);
     assert.equal(await readFile(join(root, "runs.txt"), "utf8"), "x");
 
     await exec(process.execPath, [cli, "reset", "--yes"], { cwd: root });

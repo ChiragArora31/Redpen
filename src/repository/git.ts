@@ -1,8 +1,9 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { FileChange } from "../core/types.js";
 import { capture } from "../system/process.js";
+import { gitEvidenceIgnorePatterns, isRepositoryEvidencePath } from "./paths.js";
 
 interface StatusEntry {
   path: string;
@@ -30,7 +31,7 @@ export function parsePorcelain(output: string): StatusEntry[] {
       // In -z mode Git reports the destination first, followed by the source.
       index += 1;
     }
-    if (path === ".redpen/report.json" || path.startsWith(".redpen/")) continue;
+    if (!isRepositoryEvidencePath(path)) continue;
     entries.push({ path, status, untracked: status === "??" });
   }
   return entries;
@@ -67,7 +68,7 @@ export function parseNameStatus(output: string): DiffEntry[] {
       index += 1;
     }
   }
-  return entries.filter((entry) => entry.path !== ".redpen" && !entry.path.startsWith(".redpen/"));
+  return entries.filter((entry) => isRepositoryEvidencePath(entry.path));
 }
 
 async function countUntrackedLines(root: string, path: string): Promise<number | null> {
@@ -94,18 +95,20 @@ export async function readHead(root: string): Promise<string | undefined> {
 export async function listRepositoryFiles(root: string): Promise<string[]> {
   const result = await capture("git", ["ls-files", "-co", "--exclude-standard", "-z"], root);
   if (result.exitCode !== 0) throw new Error(result.stderr || "Could not list repository files.");
-  return result.stdout.split("\0").filter((path) => path && path !== ".redpen" && !path.startsWith(".redpen/"));
+  return result.stdout.split("\0").filter((path) => path && isRepositoryEvidencePath(path));
 }
 
 export async function createWorktreeSnapshot(root: string): Promise<string> {
   const temporary = await mkdtemp(join(tmpdir(), "redpen-index-"));
   const indexPath = join(temporary, "index");
+  const excludesPath = join(temporary, "evidence-excludes");
   const env = { GIT_INDEX_FILE: indexPath };
   try {
+    await writeFile(excludesPath, `${gitEvidenceIgnorePatterns}\n`, "utf8");
     const head = await readHead(root);
     const seed = await capture("git", head ? ["read-tree", head] : ["read-tree", "--empty"], root, env);
     if (seed.exitCode !== 0) throw new Error(seed.stderr || "Could not initialize the Redpen baseline.");
-    const add = await capture("git", ["add", "-A", "--", "."], root, env);
+    const add = await capture("git", ["-c", `core.excludesFile=${excludesPath}`, "add", "-A", "--", "."], root, env);
     if (add.exitCode !== 0) throw new Error(add.stderr || "Could not snapshot the working tree.");
     const redpenFiles = await capture("git", ["ls-files", "-z", "--", ".redpen"], root, env);
     const trackedStatePaths = redpenFiles.stdout.split("\0").filter(Boolean);
@@ -133,7 +136,7 @@ export async function collectChangesSinceTree(root: string, baselineTree: string
   }
   const stats = parseNumstat(numstatResult.stdout);
   const untracked = new Set(parsePorcelain(statusResult.stdout).filter((entry) => entry.untracked).map((entry) => entry.path));
-  return parseNameStatus(nameResult.stdout).map((entry) => ({
+  return parseNameStatus(nameResult.stdout).filter((entry) => isRepositoryEvidencePath(entry.path)).map((entry) => ({
     ...entry,
     additions: stats.get(entry.path)?.additions ?? null,
     deletions: stats.get(entry.path)?.deletions ?? null,
@@ -152,7 +155,7 @@ export async function collectChanges(root: string): Promise<FileChange[]> {
   const diffArgs = ["diff", "--numstat", base, "--"];
   const diffResult = await capture("git", diffArgs, root);
   const stats = parseNumstat(diffResult.stdout);
-  const entries = parsePorcelain(statusResult.stdout);
+  const entries = parsePorcelain(statusResult.stdout).filter((entry) => isRepositoryEvidencePath(entry.path));
 
   return Promise.all(entries.map(async (entry) => {
     const stat = stats.get(entry.path);

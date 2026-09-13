@@ -63,9 +63,12 @@ AGENT CLAIMS
 ────────────────────────────────
 8 proven · 0 failed · 1 unverified
 
-NOT DONE
+DONE
 
-One claim still needs evidence.
+Definition of Done is proven.
+
+1 additional claim remains unverified.
+They may be correct. Redpen just can't prove them yet.
 ```
 
 ## Try it
@@ -107,7 +110,9 @@ Redpen does not turn uncertainty into a green checkmark.
 - `FAILED` — an applicable check produced contrary evidence.
 - `UNVERIFIED` — Redpen cannot prove or disprove it.
 
-The third answer matters. `UNVERIFIED` is not necessarily a failure; it is a precise handoff to human judgment.
+The third answer matters. `UNVERIFIED` does not mean a claim is false. It means Redpen does not have deterministic evidence capable of proving it.
+
+The Definition of Done is the task contract. An extra unverified agent claim stays visible but does not expand that contract or block `DONE`; a claim contradicted by evidence does block it.
 
 ## What Redpen verifies today
 
