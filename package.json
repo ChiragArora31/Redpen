@@ -1,0 +1,52 @@
+{
+  "name": "redpen-cli",
+  "version": "0.1.0",
+  "description": "A definition-of-done and verification layer for coding agents.",
+  "author": "Chirag Arora",
+  "type": "module",
+  "bin": {
+    "redpen": "dist/cli.js",
+    "redpen-cli": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "check": "tsc --noEmit",
+    "test": "npm run build && tsc -p tsconfig.test.json && node --test .test-dist/tests/*.test.js",
+    "demo": "npm run build --silent && ./scripts/demo.sh",
+    "prepack": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChiragArora31/Redpen.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ChiragArora31/Redpen/issues"
+  },
+  "homepage": "https://github.com/ChiragArora31/Redpen#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "coding-agents",
+    "verification",
+    "definition-of-done",
+    "codex",
+    "cli"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2"
+  }
+}

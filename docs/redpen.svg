@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="330" height="132" viewBox="0 0 330 132" role="img" aria-labelledby="title description">
+  <title id="title">Redpen</title>
+  <desc id="description">The Redpen wordmark with a red reviewer underline and check.</desc>
+  <style>
+    .word { fill: #1f2328; }
+    @media (prefers-color-scheme: dark) { .word { fill: #f0f6fc; } }
+  </style>
+  <text class="word" x="14" y="78" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="66" font-weight="700" letter-spacing="-4">redpen</text>
+  <path d="M18 99 C88 107 170 106 258 96" fill="none" stroke="#cf222e" stroke-width="7" stroke-linecap="round"/>
+  <path d="M272 93 L284 105 L310 76" fill="none" stroke="#cf222e" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
