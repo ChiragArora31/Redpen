@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { FileChange } from "../core/types.js";
@@ -110,8 +110,17 @@ export async function createWorktreeSnapshot(root: string): Promise<string> {
     if (seed.exitCode !== 0) throw new Error(seed.stderr || "Could not initialize the Redpen baseline.");
     const add = await capture("git", ["-c", `core.excludesFile=${excludesPath}`, "add", "-A", "--", "."], root, env);
     if (add.exitCode !== 0) throw new Error(add.stderr || "Could not snapshot the working tree.");
+    // Project configuration is shareable and can change verification behavior.
+    // Include it in freshness snapshots, but never count it as implementation evidence.
+    try {
+      await access(join(root, ".redpen", "config.json"));
+      const config = await capture("git", ["add", "-f", "--", ".redpen/config.json"], root, env);
+      if (config.exitCode !== 0) throw new Error(config.stderr || "Could not snapshot Redpen configuration.");
+    } catch (error) {
+      if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
+    }
     const redpenFiles = await capture("git", ["ls-files", "-z", "--", ".redpen"], root, env);
-    const trackedStatePaths = redpenFiles.stdout.split("\0").filter(Boolean);
+    const trackedStatePaths = redpenFiles.stdout.split("\0").filter((path) => path && path !== ".redpen/config.json");
     if (trackedStatePaths.length > 0) {
       const removeRedpen = await capture("git", ["update-index", "--force-remove", "--", ...trackedStatePaths], root, env);
       if (removeRedpen.exitCode !== 0) throw new Error(removeRedpen.stderr || "Could not exclude Redpen state from the baseline.");
@@ -124,8 +133,8 @@ export async function createWorktreeSnapshot(root: string): Promise<string> {
   }
 }
 
-export async function collectChangesSinceTree(root: string, baselineTree: string): Promise<FileChange[]> {
-  const currentTree = await createWorktreeSnapshot(root);
+export async function collectChangesSinceTree(root: string, baselineTree: string, currentTree?: string): Promise<FileChange[]> {
+  currentTree ??= await createWorktreeSnapshot(root);
   const [nameResult, numstatResult, statusResult] = await Promise.all([
     capture("git", ["diff", "--name-status", "-z", baselineTree, currentTree, "--"], root),
     capture("git", ["diff", "--numstat", baselineTree, currentTree, "--"], root),

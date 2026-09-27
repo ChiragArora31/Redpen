@@ -36,7 +36,7 @@ function scriptCommand(name: string, runner: { command: string; runArgs: string[
   return { command: runner.command, args, display: [runner.command, ...args].join(" "), source: `package.json#scripts.${name}` };
 }
 
-export async function discoverCommands(root: string): Promise<{ testCommand?: CommandSpec; buildCommand?: CommandSpec }> {
+export async function discoverCommands(root: string): Promise<{ testCommand?: CommandSpec; buildCommand?: CommandSpec; lintCommand?: CommandSpec; typecheckCommand?: CommandSpec }> {
   const scripts = await nodeScripts(root);
   if (scripts) {
     const runner = await packageRunner(root);
@@ -45,6 +45,8 @@ export async function discoverCommands(root: string): Promise<{ testCommand?: Co
     return {
       ...(testScript && !placeholder ? { testCommand: scriptCommand("test", runner) } : {}),
       ...(scripts.build ? { buildCommand: scriptCommand("build", runner) } : {}),
+      ...(scripts.lint ? { lintCommand: scriptCommand("lint", runner) } : {}),
+      ...(scripts.typecheck ? { typecheckCommand: scriptCommand("typecheck", runner) } : {}),
     };
   }
 

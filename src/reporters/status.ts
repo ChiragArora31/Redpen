@@ -4,7 +4,7 @@ function time(value: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
-export function renderStatus(session: RedpenSession, report?: RedpenReport): string {
+export function renderStatus(session: RedpenSession, report?: RedpenReport, stale = false): string {
   const baseline = session.repository.baselineCommit?.slice(0, 7) ?? `working tree ${session.repository.baselineTree.slice(0, 7)}`;
   const lines = [
     "REDPEN",
@@ -20,6 +20,7 @@ export function renderStatus(session: RedpenSession, report?: RedpenReport): str
     "",
     "Definition of done:",
     `${session.definitionOfDone.length} ${session.definitionOfDone.length === 1 ? "item" : "items"}`,
+    ...(session.proposedCriteria?.length ? ["", "Proposals:", ...session.proposedCriteria.map((item) => `${item.id} · ${item.title}`)] : []),
     "",
     "Agent claims:",
     `${session.agentCompletion?.claims.length ?? 0} ${(session.agentCompletion?.claims.length ?? 0) === 1 ? "claim" : "claims"}`,
@@ -44,6 +45,7 @@ export function renderStatus(session: RedpenSession, report?: RedpenReport): str
   }
   lines.push("Last check:", time(report.timestamp), "");
   lines.push(`${report.summary.proven} proven · ${report.summary.failed} failed · ${report.summary.unverified} unverified`);
+  if (stale) { lines.push("", "CHECK NEEDED", "Repository files changed after the last check."); return lines.join("\n"); }
   const pendingClaims = (session.agentCompletion?.claims.length ?? 0) - (report.agentClaims?.length ?? 0);
   if (pendingClaims > 0) {
     lines.push("", `${pendingClaims} new ${pendingClaims === 1 ? "claim" : "claims"} awaiting verification.`, "", "CHECK NEEDED");

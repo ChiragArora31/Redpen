@@ -21,6 +21,7 @@ export async function runProcess(
   options: RunProcessOptions = {},
 ): Promise<CommandEvidence> {
   const started = performance.now();
+  const startedAt = new Date().toISOString();
   const timeoutMs = options.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS;
 
   return new Promise((resolve) => {
@@ -41,6 +42,7 @@ export async function runProcess(
       clearTimeout(timeout);
       resolve({
         spec,
+        startedAt,
         exitCode,
         stdout: bounded(stdout),
         stderr: bounded(stderr),

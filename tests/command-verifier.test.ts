@@ -8,13 +8,13 @@ const repository: RepositoryEvidence = { root: "/tmp/example", changes: [], test
 const verifier = createCommandVerifier({ type: "tests-pass", title: "Tests", select: (repo) => repo.testCommand, missingReason: "missing" });
 
 test("proves a command check only on exit zero", async () => {
-  const result = await verifier.verify({ repository, runCommand: async () => ({ spec, exitCode: 0, stdout: "ok", stderr: "", durationMs: 12 }) });
+  const result = await verifier.verify({ repository, runCommand: async () => ({ spec, startedAt: new Date().toISOString(), exitCode: 0, stdout: "ok", stderr: "", durationMs: 12 }) });
   assert.equal(result.status, "proven");
   assert.equal(result.reason, "npm test · exit 0");
 });
 
 test("fails a command check on a non-zero exit", async () => {
-  const result = await verifier.verify({ repository, runCommand: async () => ({ spec, exitCode: 1, stdout: "", stderr: "bad", durationMs: 12 }) });
+  const result = await verifier.verify({ repository, runCommand: async () => ({ spec, startedAt: new Date().toISOString(), exitCode: 1, stdout: "", stderr: "bad", durationMs: 12 }) });
   assert.equal(result.status, "failed");
 });
 
@@ -30,7 +30,7 @@ test("leaves a command check unverified when no command is discoverable", async 
 test("reports a timed-out command as concrete failure", async () => {
   const result = await verifier.verify({
     repository,
-    runCommand: async () => ({ spec, exitCode: null, stdout: "", stderr: "", durationMs: 100, timedOut: true, timeoutMs: 100, error: "Timed out" }),
+    runCommand: async () => ({ spec, startedAt: new Date().toISOString(), exitCode: null, stdout: "", stderr: "", durationMs: 100, timedOut: true, timeoutMs: 100, error: "Timed out" }),
   });
   assert.equal(result.status, "failed");
   assert.match(result.reason, /timed out/);

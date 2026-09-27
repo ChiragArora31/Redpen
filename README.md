@@ -86,6 +86,16 @@ redpen import codex
 redpen check
 ```
 
+To make the task contract more specific, add proof before checking:
+
+```bash
+redpen add "API response includes a cursor" --type content-matches --path src/pagination.ts --text "nextCursor"
+redpen add "integration test passes" --command npm run test:integration
+redpen explain  # what still lacks evidence after a check
+```
+
+These checks are deterministic: literal content and a successful command do not, on their own, prove a bug is semantically fixed.
+
 No global install:
 
 ```bash
@@ -121,6 +131,7 @@ The Definition of Done is the task contract. An extra unverified agent claim sta
 - Node.js test and build scripts
 - Python tests through project metadata
 - direct file-change claims
+- project-specific file, literal-content, command, lint, typecheck, and coverage criteria
 - claims imported from Codex or entered manually
 
 Tests and builds run independently. A transcript saying “tests pass” is never accepted as proof that tests pass.
@@ -159,6 +170,40 @@ Redpen complements CI. It connects checks to a specific task and the claims made
 
 `redpen check` collects fresh Git evidence and runs applicable tests and builds. Results are shown in the terminal and written to the versioned `.redpen/report.json` artifact.
 
+### Reusable proof plans (v0.2)
+
+Run `redpen init` once to create `.redpen/config.json`. Commit this file to share project command overrides and task templates. Then choose a plan:
+
+```bash
+redpen start --template bugfix "Fix pagination when cursor is null"
+redpen add "API contract exists" --type file-exists --path docs/api.json
+redpen add "Typecheck passes" --type typecheck-pass
+redpen add "Update the migration guide" --type file-exists --path docs/migration.md --advisory
+```
+
+The built-in templates are `default`, `bugfix`, `feature`, `refactor`, and `dependency-update`. Edit the generated JSON to fit your repository. Commands are argument arrays, not shell strings:
+
+```json
+{
+  "schemaVersion": 1,
+  "commands": {
+    "test": { "command": "npm", "args": ["test"] },
+    "typecheck": { "command": "npm", "args": ["run", "typecheck"] }
+  },
+  "templates": {
+    "bugfix": [
+      { "id": "implementation", "title": "Implementation changed", "verifier": { "type": "changes-exist" } },
+      { "id": "regression", "title": "Regression coverage", "verifier": { "type": "tests-changed" } },
+      { "id": "tests", "title": "Tests pass", "verifier": { "type": "tests-pass" } }
+    ]
+  }
+}
+```
+
+`redpen add "Coverage ≥ 80%" --type coverage-threshold --report coverage/coverage-summary.json --minimum 80 --command npm run test:coverage` supports Istanbul `total.lines.pct` and Python coverage JSON `totals.percent_covered`. The command must produce a fresh report. `redpen add "Reviewer check" --type file-exists --path docs/review.md --propose` queues a criterion; `redpen accept <id>` makes it required, and `redpen reject <id>` removes it. Advisory criteria remain visible but do not block `DONE`.
+
+Redpen snapshots the repository around verification. If a test or build changes repository files, proof is withheld until a fresh check. `redpen status` shows when files changed after the last report; it never reruns commands.
+
 ```bash
 redpen import codex --session <id>          # choose an ambiguous match
 redpen import codex --file <session.jsonl>  # explicit fallback
@@ -184,13 +229,13 @@ Exit code `0` means done, `1` means not done, and `2` means Redpen could not com
 
 Codex's local JSONL format is not a stable public API. Its assumptions are isolated behind an adapter, and `--file` remains the explicit fallback. Logged transcript commands are never executed or trusted as evidence.
 
-`.redpen/session.json` and `.redpen/report.json` are ephemeral and should be ignored by Git. Reports redact repository, home, and transcript paths, but project command output can still contain sensitive data. Inspect reports before sharing them.
+`.redpen/session.json` and `.redpen/report.json` are ephemeral and ignored by Git. `.redpen/config.json` is intentionally commit-worthy. Reports redact repository, home, and transcript paths, but project command output can still contain sensitive data. Inspect reports before sharing them.
 
 ## Roadmap
 
 - Claude Code and additional agent adapters
-- custom project verifiers
-- coverage and API-compatibility evidence
+- more project-specific verifiers
+- API-compatibility evidence
 - more language and build ecosystems
 - lightweight pull-request checks
 

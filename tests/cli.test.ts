@@ -52,7 +52,7 @@ test("rejects invalid timeout and unknown options", async () => {
 
 test("status reads the last report without rerunning checks and reset clears only Redpen state", async () => {
   const root = await createRepository({
-    "package.json": JSON.stringify({ scripts: { test: "node -e \"require('fs').appendFileSync('runs.txt','x')\"" } }),
+    "package.json": JSON.stringify({ scripts: { test: "node -e \"require('fs').appendFileSync('.redpen/runs.txt','x')\"" } }),
     "src/index.js": "export const value = 1;\n",
   });
   try {
@@ -61,16 +61,16 @@ test("status reads the last report without rerunning checks and reset clears onl
     assert.match(before.stdout, /Not checked yet/);
     await put(root, "src/index.js", "export const value = 2;\n");
     await exec(process.execPath, [cli, "check", "--no-color"], { cwd: root });
-    assert.equal(await readFile(join(root, "runs.txt"), "utf8"), "x");
+    assert.equal(await readFile(join(root, ".redpen", "runs.txt"), "utf8"), "x");
     const after = await exec(process.execPath, [cli, "status"], { cwd: root });
     assert.match(after.stdout, /2 proven · 0 failed · 0 unverified/);
-    assert.equal(await readFile(join(root, "runs.txt"), "utf8"), "x");
+    assert.equal(await readFile(join(root, ".redpen", "runs.txt"), "utf8"), "x");
 
     await exec(process.execPath, [cli, "claims", "No breaking changes were introduced."], { cwd: root });
     const stale = await exec(process.execPath, [cli, "status"], { cwd: root });
     assert.match(stale.stdout, /1 new claim awaiting verification/);
     assert.match(stale.stdout, /CHECK NEEDED/);
-    assert.equal(await readFile(join(root, "runs.txt"), "utf8"), "x");
+    assert.equal(await readFile(join(root, ".redpen", "runs.txt"), "utf8"), "x");
 
     await exec(process.execPath, [cli, "reset", "--yes"], { cwd: root });
     await assert.rejects(() => access(join(root, ".redpen", "session.json")), /ENOENT/);

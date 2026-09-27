@@ -1,6 +1,9 @@
 import type { AgentClaim, AgentClaimType, AgentCompletion, BuiltinVerifierType, ClaimSource, DefinitionOfDoneItem, RedpenSession } from "../core/types.js";
 
-const VERIFIER_TYPES = new Set<BuiltinVerifierType>(["changes-exist", "tests-changed", "tests-pass", "build-pass", "file-changed"]);
+export const VERIFIER_TYPES = new Set<BuiltinVerifierType>([
+  "changes-exist", "tests-changed", "tests-pass", "build-pass", "file-changed",
+  "file-exists", "content-matches", "command-succeeds", "lint-pass", "typecheck-pass", "coverage-threshold",
+]);
 const CLAIM_TYPES = new Set<AgentClaimType>(["tests-pass", "tests-changed", "build-pass", "implementation-changed", "implementation-result", "file-changed", "unknown"]);
 
 function objectAt(value: unknown, path: string): Record<string, unknown> {
@@ -25,8 +28,7 @@ function gitObjectAt(value: unknown, path: string): string {
   return object;
 }
 
-function validateItem(value: unknown, index: number): DefinitionOfDoneItem {
-  const path = `definitionOfDone[${index}]`;
+export function validateDefinitionItem(value: unknown, path: string): DefinitionOfDoneItem {
   const item = objectAt(value, path);
   const verifier = objectAt(item.verifier, `${path}.verifier`);
   const type = stringAt(verifier.type, `${path}.verifier.type`);
@@ -36,22 +38,51 @@ function validateItem(value: unknown, index: number): DefinitionOfDoneItem {
   if (verifier.config !== undefined && (!verifier.config || typeof verifier.config !== "object" || Array.isArray(verifier.config))) {
     throw new Error(`${path}.verifier.config must be an object.`);
   }
-  if (type !== "file-changed" && verifier.config && Object.keys(verifier.config as Record<string, unknown>).length > 0) {
-    throw new Error(`${path}.verifier.type "${type}" does not accept configuration yet.`);
+  const config = verifier.config === undefined ? undefined : objectAt(verifier.config, `${path}.verifier.config`);
+  const keys: Record<string, string[]> = {
+    "changes-exist": [], "tests-changed": [], "tests-pass": [], "build-pass": [],
+    "lint-pass": [], "typecheck-pass": [], "file-changed": ["path", "action"],
+    "file-exists": ["path"], "content-matches": ["path", "text"],
+    "command-succeeds": ["command", "args"],
+    "coverage-threshold": ["command", "args", "reportPath", "minimumPercent"],
+  };
+  for (const key of Object.keys(config ?? {})) {
+    if (!keys[type]!.includes(key)) throw new Error(`${path}.verifier.config.${key} is not supported for "${type}".`);
   }
-  if (type === "file-changed") {
-    const config = objectAt(verifier.config, `${path}.verifier.config`);
-    stringAt(config.path, `${path}.verifier.config.path`);
+  const needsConfig = ["file-changed", "file-exists", "content-matches", "command-succeeds", "coverage-threshold"].includes(type);
+  if (needsConfig && !config) throw new Error(`${path}.verifier.config must be an object.`);
+  if (["file-changed", "file-exists", "content-matches"].includes(type)) safeRelativePath(stringAt(config?.path, `${path}.verifier.config.path`), `${path}.verifier.config.path`);
+  if (type === "file-changed" && config?.action !== undefined && config.action !== "added") throw new Error(`${path}.verifier.config.action must be "added".`);
+  if (type === "content-matches") stringAt(config?.text, `${path}.verifier.config.text`);
+  if (["command-succeeds", "coverage-threshold"].includes(type)) {
+    stringAt(config?.command, `${path}.verifier.config.command`);
+    if (!Array.isArray(config?.args) || !config.args.every((arg) => typeof arg === "string")) throw new Error(`${path}.verifier.config.args must be an array of strings.`);
   }
+  if (type === "coverage-threshold") {
+    safeRelativePath(stringAt(config?.reportPath, `${path}.verifier.config.reportPath`), `${path}.verifier.config.reportPath`);
+    if (typeof config?.minimumPercent !== "number" || !Number.isFinite(config.minimumPercent) || config.minimumPercent < 0 || config.minimumPercent > 100) {
+      throw new Error(`${path}.verifier.config.minimumPercent must be between 0 and 100.`);
+    }
+  }
+  if (item.required !== undefined && typeof item.required !== "boolean") throw new Error(`${path}.required must be a boolean.`);
   return {
     id: stringAt(item.id, `${path}.id`),
     title: stringAt(item.title, `${path}.title`),
     ...(item.description === undefined ? {} : { description: stringAt(item.description, `${path}.description`) }),
+    ...(item.required === undefined ? {} : { required: item.required as boolean }),
     verifier: {
       type: type as BuiltinVerifierType,
       ...(verifier.config === undefined ? {} : { config: verifier.config as Record<string, unknown> }),
     },
   };
+}
+
+export function safeRelativePath(value: string, path: string): string {
+  const normalized = value.replaceAll("\\", "/");
+  if (/^(\/|[A-Za-z]:\/)/.test(normalized) || normalized.split("/").some((part) => part === ".." || part === ".redpen") || normalized.trim() === "") {
+    throw new Error(`${path} must stay inside the repository and outside .redpen/.`);
+  }
+  return normalized.replace(/^\.\//, "");
 }
 
 function validateClaim(value: unknown, index: number): AgentClaim {
@@ -143,9 +174,12 @@ export function validateSession(value: unknown): RedpenSession {
   if (!Array.isArray(session.definitionOfDone) || session.definitionOfDone.length === 0) {
     throw new Error("definitionOfDone must contain at least one check.");
   }
-  const definitionOfDone = session.definitionOfDone.map(validateItem);
+  const definitionOfDone = session.definitionOfDone.map((item, index) => validateDefinitionItem(item, `definitionOfDone[${index}]`));
   const ids = definitionOfDone.map((item) => item.id);
   if (new Set(ids).size !== ids.length) throw new Error("definitionOfDone item ids must be unique.");
+  if (session.proposedCriteria !== undefined && !Array.isArray(session.proposedCriteria)) throw new Error("proposedCriteria must be an array.");
+  const proposedCriteria = (session.proposedCriteria as unknown[] | undefined)?.map((item, index) => validateDefinitionItem(item, `proposedCriteria[${index}]`));
+  if (proposedCriteria && new Set([...ids, ...proposedCriteria.map((item) => item.id)]).size !== ids.length + proposedCriteria.length) throw new Error("Criterion ids must be unique across the plan and proposals.");
   const baselineCommit = repository.baselineCommit;
   if (baselineCommit !== undefined) gitObjectAt(baselineCommit, "repository.baselineCommit");
   return {
@@ -159,6 +193,7 @@ export function validateSession(value: unknown): RedpenSession {
       ...(baselineCommit === undefined ? {} : { baselineCommit: baselineCommit as string }),
     },
     definitionOfDone,
+    ...(proposedCriteria ? { proposedCriteria } : {}),
     ...(session.agentCompletion === undefined ? {} : { agentCompletion: validateCompletion(session.agentCompletion) }),
   };
 }

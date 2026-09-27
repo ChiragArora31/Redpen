@@ -10,7 +10,7 @@ function commandEvidence(result: CommandEvidence) {
 }
 
 export function createCommandVerifier(options: {
-  type: "tests-pass" | "build-pass";
+  type: "tests-pass" | "build-pass" | "lint-pass" | "typecheck-pass";
   title: string;
   select: (repository: Parameters<Verifier["verify"]>[0]["repository"]) => CommandSpec | undefined;
   missingReason: string;
@@ -50,3 +50,34 @@ export const buildPassVerifier = createCommandVerifier({
   select: (repository) => repository.buildCommand,
   missingReason: "No build command could be confidently discovered.",
 });
+
+export const lintPassVerifier = createCommandVerifier({
+  type: "lint-pass",
+  title: "Lint passes",
+  select: (repository) => repository.lintCommand,
+  missingReason: "No lint command could be confidently discovered or configured.",
+});
+
+export const typecheckPassVerifier = createCommandVerifier({
+  type: "typecheck-pass",
+  title: "Typecheck passes",
+  select: (repository) => repository.typecheckCommand,
+  missingReason: "No typecheck command could be confidently discovered or configured.",
+});
+
+export const commandSucceedsVerifier: Verifier = {
+  type: "command-succeeds",
+  async verify(context, config) {
+    const command = config?.command as string;
+    const args = config?.args as string[];
+    const spec: CommandSpec = { command, args, display: [command, ...args].join(" "), source: "Definition of Done command" };
+    const result = await context.runCommand(spec);
+    return {
+      id: this.type,
+      title: "Command succeeds",
+      status: result.exitCode === 0 ? "proven" : "failed",
+      reason: result.exitCode === 0 ? `${spec.display} · exit 0` : result.timedOut ? `${spec.display} timed out.` : result.exitCode === null ? `${spec.display} could not run: ${result.error ?? "unknown error"}` : `${spec.display} · exit ${result.exitCode}`,
+      evidence: [commandEvidence(result)],
+    };
+  },
+};

@@ -17,15 +17,25 @@ import { agentRegistry } from "./agents/registry.js";
 import { applyAgentImport } from "./agents/import.js";
 import { REDPEN_VERSION } from "./version.js";
 import { DEFAULT_COMMAND_TIMEOUT_MS } from "./system/process.js";
+import { initializeProjectConfig } from "./session/config.js";
+import { addCriterion, decideProposal } from "./session/criteria.js";
+import { createWorktreeSnapshot } from "./repository/git.js";
+import type { BuiltinVerifierType } from "./core/types.js";
 
 const HELP = `Redpen
 
 "Done" is a claim. Evidence makes it true.
 
 Usage:
-  redpen start [--force] "<task>"
+  redpen init
+  redpen start [--template <name>] [--force] "<task>"
+  redpen add "<criterion>" --type <verifier> [options]
+  redpen add "<criterion>" --command <program> [args...]
+  redpen accept <proposal-id>
+  redpen reject <proposal-id>
   redpen import codex [--session <id>] [--file <path>] [--dry-run]
   redpen check [--timeout <seconds>] [--json] [--verbose]
+  redpen explain
   redpen status
   redpen claims [--file <path>] "<completion claims>"
   redpen reset [--yes]
@@ -41,6 +51,8 @@ Options:
   --timeout    Stop each test/build command after this many seconds (default: 120)
   --json       Print the report as JSON; .redpen/report.json is always written
   --verbose    Show detailed evidence and command output
+  --advisory   Make a new criterion non-blocking
+  --propose    Queue a criterion until it is accepted
   --help       Show help
   --version    Show version`;
 
@@ -108,7 +120,7 @@ async function main(): Promise<void> {
   if (args.includes("--help") || args.includes("-h")) { console.log(HELP); return; }
   if (args.includes("--version") || args.includes("-v")) { console.log(REDPEN_VERSION); return; }
   const command = args[0];
-  if (!command || !["start", "claims", "import", "check", "status", "reset"].includes(command)) {
+  if (!command || !["init", "start", "add", "accept", "reject", "claims", "import", "check", "explain", "status", "reset"].includes(command)) {
     console.error(command ? `Unknown command: ${command}\n\n${HELP}` : HELP);
     process.exitCode = command ? 2 : 0;
     return;
@@ -116,14 +128,62 @@ async function main(): Promise<void> {
 
   if (command === "start") {
     const commandArgs = args.slice(1);
-    rejectUnknownOptions(commandArgs, ["--force"]);
-    const task = positionalArgs(commandArgs, []).join(" ");
-    const session = await startSession(process.cwd(), task, args.includes("--force"));
+    rejectUnknownOptions(commandArgs, ["--force", "--template"]);
+    const task = positionalArgs(commandArgs, ["--template"]).join(" ");
+    const session = await startSession(process.cwd(), task, args.includes("--force"), optionValue(commandArgs, "--template") ?? "default");
     console.log(renderSessionStarted(session.task.description, session.definitionOfDone));
     return;
   }
 
   const root = await findRepositoryRoot(process.cwd());
+  if (command === "init") {
+    if (args.length > 1) throw new Error("`redpen init` does not accept arguments.");
+    const path = await initializeProjectConfig(root);
+    console.log(`REDPEN\n\nProject proof plans created at ${path}.\nCommit .redpen/config.json to share them.`);
+    return;
+  }
+  if (command === "add") {
+    const session = await readSession(root);
+    if (!session) throw new Error("No active Redpen task. Start one with `redpen start \"<task>\"`.");
+    const input = args.slice(1);
+    const firstOption = input.findIndex((part) => part.startsWith("--"));
+    const title = (firstOption < 0 ? input : input.slice(0, firstOption)).join(" ").trim();
+    if (!title) throw new Error("Give the criterion a title, for example: `redpen add \"API test passes\" --command npm test`. ");
+    const options = firstOption < 0 ? [] : input.slice(firstOption);
+    const commandAt = options.indexOf("--command");
+    const namedOptions = commandAt < 0 ? options : options.slice(0, commandAt);
+    rejectUnknownOptions(namedOptions, ["--type", "--path", "--text", "--report", "--minimum", "--advisory", "--propose"]);
+    const optionNames = new Set(["--type", "--path", "--text", "--report", "--minimum"]);
+    if (positionalArgs(namedOptions, [...optionNames]).length > 0) throw new Error("Unexpected add argument. Put command arguments after `--command`.");
+    const rawType = optionValue(namedOptions, "--type") ?? (commandAt >= 0 ? "command-succeeds" : undefined);
+    if (!rawType) throw new Error("Choose a verifier with `--type`, or provide `--command <program> [args...]`.");
+    const type = rawType as BuiltinVerifierType;
+    const path = optionValue(namedOptions, "--path");
+    const text = optionValue(namedOptions, "--text");
+    const reportPath = optionValue(namedOptions, "--report");
+    const minimumRaw = optionValue(namedOptions, "--minimum");
+    const argv = commandAt < 0 ? [] : options.slice(commandAt + 1);
+    if (commandAt >= 0 && (!argv[0] || argv[0].startsWith("--"))) throw new Error("`--command` requires a program followed by optional arguments.");
+    const config = {
+      ...(path ? { path } : {}),
+      ...(text ? { text } : {}),
+      ...(reportPath ? { reportPath } : {}),
+      ...(minimumRaw ? { minimumPercent: Number(minimumRaw) } : {}),
+      ...(argv.length > 0 ? { command: argv[0], args: argv.slice(1) } : {}),
+    };
+    const item = await addCriterion(session, { title, type, ...(Object.keys(config).length ? { config } : {}), required: !namedOptions.includes("--advisory"), propose: namedOptions.includes("--propose") });
+    console.log(`REDPEN\n\n${namedOptions.includes("--propose") ? "Proposed" : "Added"}: ${item.title}\nID: ${item.id}${namedOptions.includes("--propose") ? `\n\nAccept it with: redpen accept ${item.id}` : ""}`);
+    return;
+  }
+  if (command === "accept" || command === "reject") {
+    const id = args[1];
+    if (!id || args.length !== 2) throw new Error(`Usage: redpen ${command} <proposal-id>`);
+    const session = await readSession(root);
+    if (!session) throw new Error("No active Redpen task. Start one with `redpen start \"<task>\"`.");
+    const item = await decideProposal(session, id, command === "accept");
+    console.log(`REDPEN\n\n${command === "accept" ? "Accepted" : "Rejected"}: ${item.title}`);
+    return;
+  }
   if (command === "import") {
     const commandArgs = args.slice(1);
     rejectUnknownOptions(commandArgs, ["--session", "--file", "--dry-run", "--verbose"]);
@@ -175,7 +235,24 @@ async function main(): Promise<void> {
       console.log("No active Redpen task.\n\nStart one with:\n\nredpen start \"<task>\"");
       return;
     }
-    console.log(renderStatus(session, await readLastReport(root)));
+    const report = await readLastReport(root);
+    const stale = Boolean(report?.evidenceFreshness && (await createWorktreeSnapshot(root)) !== report.evidenceFreshness.verifiedTree);
+    console.log(renderStatus(session, report, stale));
+    return;
+  }
+
+  if (command === "explain") {
+    if (args.length > 1) throw new Error("`redpen explain` does not accept arguments.");
+    const session = await readSession(root);
+    if (!session) throw new Error("No active Redpen task. Start one with `redpen start \"<task>\"`.");
+    const report = await readLastReport(root);
+    if (!report || report.session?.id !== session.id) { console.log("No check has run for this task yet. Run `redpen check` first."); return; }
+    const stale = Boolean(report.evidenceFreshness && (await createWorktreeSnapshot(root)) !== report.evidenceFreshness.verifiedTree);
+    const unresolved = report.definitionOfDoneResults.filter((result, index) => result.status !== "proven" && session.definitionOfDone[index]?.required !== false);
+    console.log(["REDPEN", "", `Task: ${session.task.description}`, "", ...(stale ? ["Evidence is stale: repository files changed after the last check.", "Run `redpen check` again.", ""] : []),
+      ...(unresolved.length ? unresolved.flatMap((item) => [`${item.status.toUpperCase()}  ${item.title}`, `  ${item.reason}`, ""]) : ["All required criteria were proven at the last check.", ""]),
+      ...(session.proposedCriteria?.length ? [`${session.proposedCriteria.length} proposed criteria await acceptance.`] : []),
+    ].join("\n"));
     return;
   }
 

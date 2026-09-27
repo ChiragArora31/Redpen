@@ -4,6 +4,7 @@ import { REDPEN_VERSION } from "../version.js";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { realpath } from "node:fs/promises";
+import { createWorktreeSnapshot } from "../repository/git.js";
 
 function redactLocalPaths<T>(value: T, repositoryRoot: string): T {
   const repositoryAliases = [
@@ -52,16 +53,31 @@ export async function verifyRepository(
   const agentClaimResults: ClaimVerificationResult[] = [];
   for (const claim of agentClaims) agentClaimResults.push(await verifyClaim(claim, context, verifiers));
 
+  const verifiedTree = repository.stateTree ? await createWorktreeSnapshot(repository.root) : undefined;
+  const stale = Boolean(repository.stateTree && verifiedTree !== repository.stateTree);
+  if (stale) {
+    for (const result of [...definitionOfDoneResults, ...agentClaimResults]) {
+      if (result.status === "proven") {
+        result.status = "unverified";
+        result.reason = "Repository changed during verification. Run redpen check again.";
+      }
+    }
+  }
+
   const countResults = (results: Array<{ status: VerificationStatus }>) => {
     const counts: Record<VerificationStatus, number> = { proven: 0, failed: 0, unverified: 0 };
     for (const result of results) counts[result.status] += 1;
     return counts;
   };
   const definitionCounts = countResults(definitionOfDoneResults);
+  const requiredResults = definitionOfDoneResults.filter((_result, index) => definitionOfDone[index]?.required !== false);
+  const advisoryResults = definitionOfDoneResults.filter((_result, index) => definitionOfDone[index]?.required === false);
+  const requiredCounts = countResults(requiredResults);
+  const advisoryCounts = countResults(advisoryResults);
   const claimCounts = countResults(agentClaimResults);
-  const definitionSatisfied = definitionCounts.failed === 0 && definitionCounts.unverified === 0;
+  const definitionSatisfied = requiredCounts.failed === 0 && requiredCounts.unverified === 0;
   // Extra unsupported claims do not expand the task contract. Concrete contradictions still block a trustworthy DONE verdict.
-  const done = definitionSatisfied && claimCounts.failed === 0;
+  const done = definitionSatisfied && claimCounts.failed === 0 && !stale;
   const summary = {
     proven: definitionCounts.proven + claimCounts.proven,
     failed: definitionCounts.failed + claimCounts.failed,
@@ -77,16 +93,20 @@ export async function verifyRepository(
     } catch { agentRanInRepository = resolve(agentWorkingDirectory) === resolve(repository.root); }
   }
   const report: RedpenReport = {
-    schemaVersion: 6,
+    schemaVersion: 7,
     redpenVersion: REDPEN_VERSION,
     timestamp: new Date().toISOString(),
     repository: { root: "." },
     summary,
     definitionOfDoneSummary: { ...definitionCounts, satisfied: definitionSatisfied },
+    requiredSummary: { ...requiredCounts, satisfied: definitionSatisfied },
+    advisorySummary: advisoryCounts,
+    ...(repository.stateTree && verifiedTree ? { evidenceFreshness: { stateTree: repository.stateTree, verifiedTree, stale } } : {}),
     agentClaimSummary: claimCounts,
     verdict: done ? "done" : "not_done",
     ...(session ? { session: { id: session.id, startedAt: session.startedAt }, task: session.task } : {}),
     definitionOfDone,
+    ...(session?.proposedCriteria ? { proposedCriteria: session.proposedCriteria } : {}),
     definitionOfDoneResults,
     ...(session?.agentCompletion?.agent ? { agent: session.agentCompletion.agent } : {}),
     ...(session?.agentCompletion?.metadata ? {

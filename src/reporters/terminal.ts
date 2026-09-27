@@ -23,8 +23,9 @@ export function renderTerminal(report: RedpenReport, color = process.stdout.isTT
   const lines = ["REDPEN", ""];
   if (report.task) lines.push("TASK", report.task.description, "");
   lines.push("DEFINITION OF DONE", "────────────────────────────────", "");
-  for (const check of report.definitionOfDoneResults) {
-    lines.push(`${paint(check.status, marks[check.status])} ${check.title}`, `  ${check.reason}`);
+  for (const [index, check] of report.definitionOfDoneResults.entries()) {
+    const advisory = report.definitionOfDone[index]?.required === false;
+    lines.push(`${paint(check.status, marks[check.status])} ${check.title}${advisory ? " (advisory)" : ""}`, `  ${check.reason}`);
     if (verbose) lines.push(...detailLines(check.evidence));
     lines.push("");
   }
@@ -41,19 +42,24 @@ export function renderTerminal(report: RedpenReport, color = process.stdout.isTT
     `${report.summary.proven} proven · ${report.summary.failed} failed · ${report.summary.unverified} unverified`,
     "",
   );
+  if (report.evidenceFreshness?.stale) lines.push("Evidence became stale during this check. Run it again.", "");
+  if (report.proposedCriteria?.length) lines.push(`${report.proposedCriteria.length} proposed ${report.proposedCriteria.length === 1 ? "criterion awaits" : "criteria await"} acceptance.`, "");
   const unverifiedClaims = report.agentClaimResults.filter((result) => result.status === "unverified").length;
   const failedClaims = report.agentClaimResults.filter((result) => result.status === "failed").length;
-  const unresolvedDefinition = report.definitionOfDoneResults.filter((result) => result.status !== "proven").length;
-  if (report.verdict === "done" && report.summary.unverified === 0) lines.push("A+", "", "You may now say \"done.\"");
+  const unresolvedDefinition = report.definitionOfDoneResults.filter((result, index) => result.status !== "proven" && report.definitionOfDone[index]?.required !== false).length;
+  const unresolvedAdvisory = (report.advisorySummary?.failed ?? 0) + (report.advisorySummary?.unverified ?? 0);
+  if (report.verdict === "done" && report.summary.unverified === 0 && report.summary.failed === 0) lines.push("A+", "", "You may now say \"done.\"");
   else if (report.verdict === "done") {
     lines.push("DONE", "", "Definition of Done is proven.", "");
-    lines.push(`${unverifiedClaims} additional ${unverifiedClaims === 1 ? "claim remains" : "claims remain"} unverified.`);
-    lines.push("They may be correct. Redpen just can't prove them yet.");
+    if (unverifiedClaims) lines.push(`${unverifiedClaims} additional ${unverifiedClaims === 1 ? "claim remains" : "claims remain"} unverified.`, "They may be correct. Redpen just can't prove them yet.");
+    if (unresolvedAdvisory) lines.push(`${unresolvedAdvisory} advisory ${unresolvedAdvisory === 1 ? "item remains" : "items remain"} unresolved.`);
+    lines.push("Run `redpen explain` for details.");
   } else {
     lines.push("NOT DONE", "");
     if (unresolvedDefinition > 0) lines.push(`${unresolvedDefinition} Definition-of-Done ${unresolvedDefinition === 1 ? "item remains" : "items remain"} unresolved.`);
     if (failedClaims > 0) lines.push(`${failedClaims} agent ${failedClaims === 1 ? "claim is" : "claims are"} contradicted by evidence.`);
-    if (report.summary.unverified > 0) lines.push("Unverified does not mean false. Redpen just can't prove it yet.");
+    if (report.summary.unverified > 0) lines.push("They may be correct. Redpen just can't prove them yet.");
+    lines.push("Run `redpen explain` for the missing evidence.");
   }
   return lines.join("\n");
 }

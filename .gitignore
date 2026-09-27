@@ -1,7 +1,8 @@
 node_modules/
 dist/
 .test-dist/
-.redpen/
+.redpen/*
+!.redpen/config.json
 *.log
 .DS_Store
 __pycache__/

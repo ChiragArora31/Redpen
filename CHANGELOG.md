@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- Add reusable, shareable task proof plans with `redpen init` and `start --template`
+- Add task criteria with `redpen add`, including reviewable proposals and advisory checks
+- Add file-existence, literal-content, custom-command, lint, typecheck, and JSON coverage verifiers
+- Explain unresolved required checks with `redpen explain`
+- Detect repository or project-config changes that make a check stale
+- Extend the versioned report with required/advisory summaries and evidence freshness
+
 ## 0.1.1
 
 - Exclude dependency and generated directories from repository evidence

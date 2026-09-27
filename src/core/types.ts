@@ -20,7 +20,13 @@ export type BuiltinVerifierType =
   | "tests-changed"
   | "tests-pass"
   | "build-pass"
-  | "file-changed";
+  | "file-changed"
+  | "file-exists"
+  | "content-matches"
+  | "command-succeeds"
+  | "lint-pass"
+  | "typecheck-pass"
+  | "coverage-threshold";
 
 export type AgentClaimType =
   | "tests-pass"
@@ -74,6 +80,7 @@ export interface DefinitionOfDoneItem {
   id: string;
   title: string;
   description?: string;
+  required?: boolean;
   verifier: {
     type: BuiltinVerifierType;
     config?: Record<string, unknown>;
@@ -91,6 +98,7 @@ export interface RedpenSession {
     baselineCommit?: string;
   };
   definitionOfDone: DefinitionOfDoneItem[];
+  proposedCriteria?: DefinitionOfDoneItem[];
   agentCompletion?: AgentCompletion;
 }
 
@@ -111,6 +119,7 @@ export interface CommandSpec {
 
 export interface CommandEvidence {
   spec: CommandSpec;
+  startedAt: string;
   exitCode: number | null;
   stdout: string;
   stderr: string;
@@ -122,10 +131,13 @@ export interface CommandEvidence {
 
 export interface RepositoryEvidence {
   root: string;
+  stateTree?: string;
   changes: FileChange[];
   testFiles: FileChange[];
   testCommand?: CommandSpec;
   buildCommand?: CommandSpec;
+  lintCommand?: CommandSpec;
+  typecheckCommand?: CommandSpec;
 }
 
 export interface VerificationContext {
@@ -139,7 +151,7 @@ export interface Verifier {
 }
 
 export interface RedpenReport {
-  schemaVersion: 6;
+  schemaVersion: 6 | 7;
   redpenVersion: string;
   timestamp: string;
   repository: {
@@ -147,6 +159,9 @@ export interface RedpenReport {
   };
   summary: Record<VerificationStatus, number> & { done: boolean };
   definitionOfDoneSummary: Record<VerificationStatus, number> & { satisfied: boolean };
+  requiredSummary?: Record<VerificationStatus, number> & { satisfied: boolean };
+  advisorySummary?: Record<VerificationStatus, number>;
+  evidenceFreshness?: { stateTree: string; verifiedTree: string; stale: boolean };
   agentClaimSummary: Record<VerificationStatus, number>;
   verdict: "done" | "not_done";
   session?: {
@@ -157,6 +172,7 @@ export interface RedpenReport {
     description: string;
   };
   definitionOfDone: DefinitionOfDoneItem[];
+  proposedCriteria?: DefinitionOfDoneItem[];
   definitionOfDoneResults: VerificationResult[];
   agent?: AgentCompletion["agent"];
   agentSession?: { id?: string; startedAt?: string; completedAt?: string; workingDirectory?: string };

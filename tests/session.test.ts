@@ -56,7 +56,7 @@ test("does not silently ignore unsupported verifier configuration", async () => 
       definitionOfDone: [{ id: "implementation", title: "Implementation", verifier: { type: "changes-exist", config: { path: "src" } } }],
     };
     await writeFile(statePaths(root).session, JSON.stringify(configured), "utf8");
-    await assert.rejects(() => readSession(root), /does not accept configuration yet/);
+    await assert.rejects(() => readSession(root), /not supported/);
   } finally { await removeRepository(root); }
 });
 
