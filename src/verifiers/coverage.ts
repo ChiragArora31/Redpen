@@ -25,7 +25,7 @@ export const coverageThresholdVerifier: Verifier = {
     const file = await repositoryFile(repository.root, path);
     if (!file.exists || !file.regular) return { id: this.type, title: "Coverage threshold", status: "unverified", reason: `Coverage command did not produce ${path}.`, evidence };
     const modified = (await stat(file.resolved)).mtimeMs;
-    if (modified < Date.parse(run.startedAt) - 1_000) return { id: this.type, title: "Coverage threshold", status: "unverified", reason: `${path} predates the coverage command.`, evidence };
+    if (modified <= Date.parse(run.startedAt)) return { id: this.type, title: "Coverage threshold", status: "unverified", reason: `${path} predates the coverage command.`, evidence };
     let result: unknown;
     try { result = JSON.parse(await readFile(file.resolved, "utf8")); }
     catch { return { id: this.type, title: "Coverage threshold", status: "unverified", reason: `${path} is not valid coverage JSON.`, evidence }; }

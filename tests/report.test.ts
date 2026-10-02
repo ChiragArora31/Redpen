@@ -26,7 +26,8 @@ test("serializes the task, definition, result, and evidence chain", async () => 
     const report = await verifyRepository(repository, session.definitionOfDone, verifierRegistry, session);
     const path = await writeJsonReport(report, root);
     const stored = JSON.parse(await readFile(path, "utf8")) as typeof report;
-    assert.equal(stored.schemaVersion, 7);
+    assert.equal(stored.schemaVersion, 8);
+    assert.deepEqual(stored.verificationPolicy, { requireAllClaims: false });
     assert.equal(stored.requiredSummary?.satisfied, true);
     assert.equal(stored.evidenceFreshness?.stale, false);
     assert.equal(stored.task?.description, "Change the exported value in .");

@@ -2,6 +2,8 @@
 import { collectRepository } from "./repository/collect.js";
 import { verifyRepository } from "./core/engine.js";
 import { renderSessionStarted, renderTerminal } from "./reporters/terminal.js";
+import { renderMarkdown } from "./reporters/markdown.js";
+import { renderExplanation } from "./reporters/explain.js";
 import { writeJsonReport } from "./reporters/json.js";
 import { verifierRegistry } from "./verifiers/registry.js";
 import { genericDefinitionOfDone } from "./session/definition.js";
@@ -17,7 +19,7 @@ import { agentRegistry } from "./agents/registry.js";
 import { applyAgentImport } from "./agents/import.js";
 import { REDPEN_VERSION } from "./version.js";
 import { DEFAULT_COMMAND_TIMEOUT_MS } from "./system/process.js";
-import { initializeProjectConfig } from "./session/config.js";
+import { initializeProjectConfig, readProjectConfig } from "./session/config.js";
 import { addCriterion, decideProposal } from "./session/criteria.js";
 import { createWorktreeSnapshot } from "./repository/git.js";
 import type { BuiltinVerifierType } from "./core/types.js";
@@ -34,7 +36,8 @@ Usage:
   redpen accept <proposal-id>
   redpen reject <proposal-id>
   redpen import codex [--session <id>] [--file <path>] [--dry-run]
-  redpen check [--timeout <seconds>] [--json] [--verbose]
+  redpen check [--timeout <seconds>] [--strict-claims] [--markdown|--json]
+  redpen report
   redpen explain
   redpen status
   redpen claims [--file <path>] "<completion claims>"
@@ -51,6 +54,8 @@ Options:
   --timeout    Stop each test/build command after this many seconds (default: 120)
   --json       Print the report as JSON; .redpen/report.json is always written
   --verbose    Show detailed evidence and command output
+  --markdown   Print a shareable evidence receipt without raw command output
+  --strict-claims  Require proof for every agent claim
   --advisory   Make a new criterion non-blocking
   --propose    Queue a criterion until it is accepted
   --help       Show help
@@ -120,7 +125,7 @@ async function main(): Promise<void> {
   if (args.includes("--help") || args.includes("-h")) { console.log(HELP); return; }
   if (args.includes("--version") || args.includes("-v")) { console.log(REDPEN_VERSION); return; }
   const command = args[0];
-  if (!command || !["init", "start", "add", "accept", "reject", "claims", "import", "check", "explain", "status", "reset"].includes(command)) {
+  if (!command || !["init", "start", "add", "accept", "reject", "claims", "import", "check", "report", "explain", "status", "reset"].includes(command)) {
     console.error(command ? `Unknown command: ${command}\n\n${HELP}` : HELP);
     process.exitCode = command ? 2 : 0;
     return;
@@ -248,11 +253,19 @@ async function main(): Promise<void> {
     const report = await readLastReport(root);
     if (!report || report.session?.id !== session.id) { console.log("No check has run for this task yet. Run `redpen check` first."); return; }
     const stale = Boolean(report.evidenceFreshness && (await createWorktreeSnapshot(root)) !== report.evidenceFreshness.verifiedTree);
-    const unresolved = report.definitionOfDoneResults.filter((result, index) => result.status !== "proven" && session.definitionOfDone[index]?.required !== false);
-    console.log(["REDPEN", "", `Task: ${session.task.description}`, "", ...(stale ? ["Evidence is stale: repository files changed after the last check.", "Run `redpen check` again.", ""] : []),
-      ...(unresolved.length ? unresolved.flatMap((item) => [`${item.status.toUpperCase()}  ${item.title}`, `  ${item.reason}`, ""]) : ["All required criteria were proven at the last check.", ""]),
-      ...(session.proposedCriteria?.length ? [`${session.proposedCriteria.length} proposed criteria await acceptance.`] : []),
-    ].join("\n"));
+    console.log(renderExplanation(session, report, stale));
+    return;
+  }
+
+  if (command === "report") {
+    if (args.length > 1) throw new Error("`redpen report` does not accept arguments. Run `redpen check` to create a fresh report.");
+    const report = await readLastReport(root);
+    if (!report) throw new Error("No Redpen report exists yet. Run `redpen check` first.");
+    const session = await readSession(root);
+    if (session && report.session?.id !== session.id) throw new Error("The saved report belongs to a different task. Run `redpen check` again.");
+    const stale = Boolean(report.evidenceFreshness && (await createWorktreeSnapshot(root)) !== report.evidenceFreshness.verifiedTree);
+    console.log(renderMarkdown(report, stale));
+    if (stale || report.verdict === "not_done") process.exitCode = 1;
     return;
   }
 
@@ -268,15 +281,18 @@ async function main(): Promise<void> {
   }
 
   const commandArgs = args.slice(1);
-  rejectUnknownOptions(commandArgs, ["--json", "--no-color", "--verbose", "--timeout"]);
+  rejectUnknownOptions(commandArgs, ["--json", "--markdown", "--no-color", "--verbose", "--timeout", "--strict-claims"]);
   if (positionalArgs(commandArgs, ["--timeout"]).length > 0) throw new Error("`redpen check` does not accept positional arguments.");
+  if (args.includes("--json") && args.includes("--markdown")) throw new Error("Choose either `--json` or `--markdown`, not both.");
+  if (args.includes("--markdown") && args.includes("--verbose")) throw new Error("`--verbose` is only available with terminal output; Markdown omits raw command output.");
   const timeoutMs = timeoutValue(commandArgs);
   const session = await readSession(root);
   const repository = await collectRepository(root, session?.repository.baselineTree);
+  const projectConfig = await readProjectConfig(root);
   const definition = session?.definitionOfDone ?? genericDefinitionOfDone;
-  const report = await verifyRepository(repository, definition, verifierRegistry, session, { timeoutMs });
+  const report = await verifyRepository(repository, definition, verifierRegistry, session, { timeoutMs, strictClaims: args.includes("--strict-claims") || projectConfig?.policy?.requireAllClaims === true });
   await writeJsonReport(report, root);
-  console.log(args.includes("--json") ? JSON.stringify(report, null, 2) : renderTerminal(report, !args.includes("--no-color") && process.stdout.isTTY, args.includes("--verbose")));
+  console.log(args.includes("--json") ? JSON.stringify(report, null, 2) : args.includes("--markdown") ? renderMarkdown(report) : renderTerminal(report, !args.includes("--no-color") && process.stdout.isTTY, args.includes("--verbose")));
   if (report.verdict === "not_done") process.exitCode = 1;
 }
 

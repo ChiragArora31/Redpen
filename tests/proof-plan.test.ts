@@ -123,7 +123,7 @@ test("CLI exposes missing evidence and refuses an unsafe file path", async () =>
     const explain = await runCli(root, ["check", "--no-color"]);
     assert.equal(explain.exitCode, 1);
     const report = JSON.parse(await readFile(join(root, ".redpen", "report.json"), "utf8")) as { schemaVersion: number; definitionOfDoneResults: Array<{ title: string; status: string }> };
-    assert.equal(report.schemaVersion, 7);
+    assert.equal(report.schemaVersion, 8);
     assert.equal(report.definitionOfDoneResults.find((item) => item.title === "Implementation has marker")?.status, "failed");
     const guidance = await runCli(root, ["explain"]);
     assert.match(guidance.output, /Implementation has marker/);
@@ -145,6 +145,20 @@ test("coverage threshold uses a fresh report from its own command", async () => 
     const tooHigh = { ...current, definitionOfDone: current.definitionOfDone.map((item) => item.title === "Coverage at least 80%" ? { ...item, verifier: { ...item.verifier, config: { ...item.verifier.config, minimumPercent: 90 } } } : item) };
     const failed = await verifyRepository(repository, tooHigh.definitionOfDone, verifierRegistry, tooHigh);
     assert.equal(failed.definitionOfDoneResults.find((item) => item.title === "Coverage at least 80%")?.status, "failed");
+  } finally { await removeRepository(root); }
+});
+
+test("a successful command cannot reuse a pre-existing coverage report", async () => {
+  const root = await createRepository();
+  try {
+    const session = await startSession(root, "Reject stale coverage");
+    await put(root, "src/index.ts", "export const value = 2;\n");
+    await put(root, "coverage/coverage-summary.json", JSON.stringify({ total: { lines: { pct: 100 } } }));
+    await addCriterion(session, { title: "Coverage at least 80%", type: "coverage-threshold", config: { command: "node", args: ["-e", "process.exit(0)"], reportPath: "coverage/coverage-summary.json", minimumPercent: 80 } });
+    const current = (await readSession(root))!;
+    const repository = await collectRepository(root, current.repository.baselineTree);
+    const report = await verifyRepository(repository, current.definitionOfDone, verifierRegistry, current);
+    assert.equal(report.definitionOfDoneResults.find((item) => item.title === "Coverage at least 80%")?.status, "unverified");
   } finally { await removeRepository(root); }
 });
 

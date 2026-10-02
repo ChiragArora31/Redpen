@@ -86,6 +86,8 @@ redpen import codex
 redpen check
 ```
 
+Want to hand the result to a reviewer? `redpen report` prints a concise Markdown evidence receipt from the last check without rerunning tests. It says `CHECK NEEDED` and exits nonzero if repository files changed afterward.
+
 To make the task contract more specific, add proof before checking:
 
 ```bash
@@ -123,6 +125,8 @@ Redpen does not turn uncertainty into a green checkmark.
 The third answer matters. `UNVERIFIED` does not mean a claim is false. It means Redpen does not have deterministic evidence capable of proving it.
 
 The Definition of Done is the task contract. An extra unverified agent claim stays visible but does not expand that contract or block `DONE`; a claim contradicted by evidence does block it.
+
+For a stricter handoff, use `redpen check --strict-claims`. Every agent claim must then be proven for `DONE`. Teams can commit `"policy": { "requireAllClaims": true }` in `.redpen/config.json` to apply that rule by default. Unsupported semantic claims will remain unverified and block a strict verdict; Redpen will not pretend that a generic test proves them.
 
 ## What Redpen verifies today
 
@@ -170,6 +174,16 @@ Redpen complements CI. It connects checks to a specific task and the claims made
 
 `redpen check` collects fresh Git evidence and runs applicable tests and builds. Results are shown in the terminal and written to the versioned `.redpen/report.json` artifact.
 
+### Share the evidence (v0.3)
+
+```bash
+redpen check --markdown > .redpen/receipt.md  # verify and render
+redpen report                            # reprint the last receipt; no checks rerun
+redpen explain                           # why anything remains unresolved
+```
+
+The receipt separates required criteria, advisory criteria, and agent claims. It includes verdicts, reasons, and short evidence summaries, but omits raw command output and the agent's full completion message. It is still based on repository content and agent text: review it before pasting it into a PR. `redpen report` exits `1` for a `NOT DONE` or stale result, `0` for a current `DONE` result, and `2` when no usable report exists.
+
 ### Reusable proof plans (v0.2)
 
 Run `redpen init` once to create `.redpen/config.json`. Commit this file to share project command overrides and task templates. Then choose a plan:
@@ -190,6 +204,7 @@ The built-in templates are `default`, `bugfix`, `feature`, `refactor`, and `depe
     "test": { "command": "npm", "args": ["test"] },
     "typecheck": { "command": "npm", "args": ["run", "typecheck"] }
   },
+  "policy": { "requireAllClaims": false },
   "templates": {
     "bugfix": [
       { "id": "implementation", "title": "Implementation changed", "verifier": { "type": "changes-exist" } },
@@ -210,6 +225,8 @@ redpen import codex --file <session.jsonl>  # explicit fallback
 redpen import codex --dry-run               # preview without writing
 redpen claims "Added tests. Tests pass."    # manual claim input
 redpen check --verbose --timeout 120        # detailed evidence
+redpen check --strict-claims                  # require proof for every agent claim
+redpen report                                 # portable receipt from the last check
 redpen status                               # never reruns checks
 redpen reset --yes                          # clears state, not repo files
 ```

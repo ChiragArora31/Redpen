@@ -26,7 +26,7 @@ export async function verifyRepository(
   definitionOfDone: DefinitionOfDoneItem[],
   verifiers: Record<string, Verifier>,
   session?: RedpenSession,
-  options: { timeoutMs?: number } = {},
+  options: { timeoutMs?: number; strictClaims?: boolean } = {},
 ): Promise<RedpenReport> {
   const commandRuns = new Map<string, ReturnType<typeof runProcess>>();
   const context = {
@@ -77,7 +77,7 @@ export async function verifyRepository(
   const claimCounts = countResults(agentClaimResults);
   const definitionSatisfied = requiredCounts.failed === 0 && requiredCounts.unverified === 0;
   // Extra unsupported claims do not expand the task contract. Concrete contradictions still block a trustworthy DONE verdict.
-  const done = definitionSatisfied && claimCounts.failed === 0 && !stale;
+  const done = definitionSatisfied && claimCounts.failed === 0 && (!options.strictClaims || claimCounts.unverified === 0) && !stale;
   const summary = {
     proven: definitionCounts.proven + claimCounts.proven,
     failed: definitionCounts.failed + claimCounts.failed,
@@ -93,7 +93,7 @@ export async function verifyRepository(
     } catch { agentRanInRepository = resolve(agentWorkingDirectory) === resolve(repository.root); }
   }
   const report: RedpenReport = {
-    schemaVersion: 7,
+    schemaVersion: 8,
     redpenVersion: REDPEN_VERSION,
     timestamp: new Date().toISOString(),
     repository: { root: "." },
@@ -103,6 +103,7 @@ export async function verifyRepository(
     advisorySummary: advisoryCounts,
     ...(repository.stateTree && verifiedTree ? { evidenceFreshness: { stateTree: repository.stateTree, verifiedTree, stale } } : {}),
     agentClaimSummary: claimCounts,
+    verificationPolicy: { requireAllClaims: options.strictClaims === true },
     verdict: done ? "done" : "not_done",
     ...(session ? { session: { id: session.id, startedAt: session.startedAt }, task: session.task } : {}),
     definitionOfDone,

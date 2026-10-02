@@ -52,7 +52,10 @@ export async function writeSession(session: RedpenSession, clearPreviousReport =
 export async function readLastReport(root: string): Promise<RedpenReport | undefined> {
   try {
     const report = JSON.parse(await readFile(statePaths(root).report, "utf8")) as Partial<RedpenReport>;
-    if (typeof report.schemaVersion !== "number" || typeof report.timestamp !== "string" || !report.summary || (report.verdict !== "done" && report.verdict !== "not_done")) {
+    if (typeof report.schemaVersion !== "number" || typeof report.timestamp !== "string" || !report.summary ||
+      (report.verdict !== "done" && report.verdict !== "not_done") ||
+      !Array.isArray(report.definitionOfDone) || !Array.isArray(report.definitionOfDoneResults) ||
+      !Array.isArray(report.agentClaims) || !Array.isArray(report.agentClaimResults)) {
       throw new Error("Invalid .redpen/report.json: required report fields are missing.");
     }
     return report as RedpenReport;

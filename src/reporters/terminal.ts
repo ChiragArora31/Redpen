@@ -46,6 +46,7 @@ export function renderTerminal(report: RedpenReport, color = process.stdout.isTT
   if (report.proposedCriteria?.length) lines.push(`${report.proposedCriteria.length} proposed ${report.proposedCriteria.length === 1 ? "criterion awaits" : "criteria await"} acceptance.`, "");
   const unverifiedClaims = report.agentClaimResults.filter((result) => result.status === "unverified").length;
   const failedClaims = report.agentClaimResults.filter((result) => result.status === "failed").length;
+  const strictUnverifiedClaims = report.verificationPolicy?.requireAllClaims ? unverifiedClaims : 0;
   const unresolvedDefinition = report.definitionOfDoneResults.filter((result, index) => result.status !== "proven" && report.definitionOfDone[index]?.required !== false).length;
   const unresolvedAdvisory = (report.advisorySummary?.failed ?? 0) + (report.advisorySummary?.unverified ?? 0);
   if (report.verdict === "done" && report.summary.unverified === 0 && report.summary.failed === 0) lines.push("A+", "", "You may now say \"done.\"");
@@ -58,6 +59,7 @@ export function renderTerminal(report: RedpenReport, color = process.stdout.isTT
     lines.push("NOT DONE", "");
     if (unresolvedDefinition > 0) lines.push(`${unresolvedDefinition} Definition-of-Done ${unresolvedDefinition === 1 ? "item remains" : "items remain"} unresolved.`);
     if (failedClaims > 0) lines.push(`${failedClaims} agent ${failedClaims === 1 ? "claim is" : "claims are"} contradicted by evidence.`);
+    if (strictUnverifiedClaims > 0) lines.push(`${strictUnverifiedClaims} agent ${strictUnverifiedClaims === 1 ? "claim needs" : "claims need"} proof under the strict-claims policy.`);
     if (report.summary.unverified > 0) lines.push("They may be correct. Redpen just can't prove them yet.");
     lines.push("Run `redpen explain` for the missing evidence.");
   }

@@ -8,6 +8,7 @@ export interface ProjectConfig {
   schemaVersion: 1;
   commands?: Partial<Record<"test" | "build" | "lint" | "typecheck", { command: string; args: string[] }>>;
   templates?: Record<string, DefinitionOfDoneItem[]>;
+  policy?: { requireAllClaims: boolean };
 }
 
 export const configPath = (root: string) => join(root, ".redpen", "config.json");
@@ -20,8 +21,14 @@ function record(value: unknown, name: string): Record<string, unknown> {
 export function validateProjectConfig(value: unknown): ProjectConfig {
   const input = record(value, "config");
   if (input.schemaVersion !== 1) throw new Error("schemaVersion must be 1.");
-  for (const key of Object.keys(input)) if (!["schemaVersion", "commands", "templates"].includes(key)) throw new Error(`Unknown config field: ${key}.`);
+  for (const key of Object.keys(input)) if (!["schemaVersion", "commands", "templates", "policy"].includes(key)) throw new Error(`Unknown config field: ${key}.`);
   const output: ProjectConfig = { schemaVersion: 1 };
+  if (input.policy !== undefined) {
+    const policy = record(input.policy, "policy");
+    for (const key of Object.keys(policy)) if (key !== "requireAllClaims") throw new Error(`Unknown policy field: ${key}.`);
+    if (typeof policy.requireAllClaims !== "boolean") throw new Error("policy.requireAllClaims must be a boolean.");
+    output.policy = { requireAllClaims: policy.requireAllClaims };
+  }
   if (input.commands !== undefined) {
     const commands = record(input.commands, "commands");
     output.commands = {};

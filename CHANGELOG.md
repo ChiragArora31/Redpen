@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+- Add reviewable Markdown evidence receipts with `redpen check --markdown` and non-executing `redpen report`
+- Mark receipts CHECK NEEDED when repository evidence has changed since the last check
+- Add optional strict-claims policy through `--strict-claims` or shareable `.redpen/config.json`
+- Make `redpen explain` show contradicted and unverified agent claims, not just incomplete task criteria
+- Tighten coverage freshness so a successful command cannot reuse an earlier report
+- Extend the versioned JSON report with the applied claim policy
+
 ## 0.2.0
 
 - Add reusable, shareable task proof plans with `redpen init` and `start --template`

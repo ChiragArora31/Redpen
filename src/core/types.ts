@@ -151,7 +151,7 @@ export interface Verifier {
 }
 
 export interface RedpenReport {
-  schemaVersion: 6 | 7;
+  schemaVersion: 6 | 7 | 8;
   redpenVersion: string;
   timestamp: string;
   repository: {
@@ -163,6 +163,7 @@ export interface RedpenReport {
   advisorySummary?: Record<VerificationStatus, number>;
   evidenceFreshness?: { stateTree: string; verifiedTree: string; stale: boolean };
   agentClaimSummary: Record<VerificationStatus, number>;
+  verificationPolicy?: { requireAllClaims: boolean };
   verdict: "done" | "not_done";
   session?: {
     id: string;
