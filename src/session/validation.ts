@@ -2,7 +2,7 @@ import type { AgentClaim, AgentClaimType, AgentCompletion, BuiltinVerifierType, 
 
 export const VERIFIER_TYPES = new Set<BuiltinVerifierType>([
   "changes-exist", "tests-changed", "tests-pass", "build-pass", "file-changed",
-  "file-exists", "content-matches", "command-succeeds", "lint-pass", "typecheck-pass", "coverage-threshold",
+  "file-exists", "content-matches", "command-succeeds", "lint-pass", "typecheck-pass", "coverage-threshold", "regression-test",
 ]);
 const CLAIM_TYPES = new Set<AgentClaimType>(["tests-pass", "tests-changed", "build-pass", "implementation-changed", "implementation-result", "file-changed", "unknown"]);
 
@@ -45,13 +45,15 @@ export function validateDefinitionItem(value: unknown, path: string): Definition
     "file-exists": ["path"], "content-matches": ["path", "text"],
     "command-succeeds": ["command", "args"],
     "coverage-threshold": ["command", "args", "reportPath", "minimumPercent"],
+    "regression-test": ["path"],
   };
   for (const key of Object.keys(config ?? {})) {
     if (!keys[type]!.includes(key)) throw new Error(`${path}.verifier.config.${key} is not supported for "${type}".`);
   }
-  const needsConfig = ["file-changed", "file-exists", "content-matches", "command-succeeds", "coverage-threshold"].includes(type);
+  const needsConfig = ["file-changed", "file-exists", "content-matches", "command-succeeds", "coverage-threshold", "regression-test"].includes(type);
   if (needsConfig && !config) throw new Error(`${path}.verifier.config must be an object.`);
-  if (["file-changed", "file-exists", "content-matches"].includes(type)) safeRelativePath(stringAt(config?.path, `${path}.verifier.config.path`), `${path}.verifier.config.path`);
+  if (["file-changed", "file-exists", "content-matches", "regression-test"].includes(type)) safeRelativePath(stringAt(config?.path, `${path}.verifier.config.path`), `${path}.verifier.config.path`);
+  if (type === "regression-test" && !/\.(?:c|m)?js$/.test(String(config?.path))) throw new Error(`${path}.verifier.config.path must be a JavaScript node:test file (.js, .mjs or .cjs).`);
   if (type === "file-changed" && config?.action !== undefined && config.action !== "added") throw new Error(`${path}.verifier.config.action must be "added".`);
   if (type === "content-matches") stringAt(config?.text, `${path}.verifier.config.text`);
   if (["command-succeeds", "coverage-threshold"].includes(type)) {
@@ -139,7 +141,7 @@ function validateCompletion(value: unknown): AgentCompletion {
   let completionSource: AgentCompletion["source"];
   if (completion.source !== undefined) {
     const rawSource = objectAt(completion.source, "agentCompletion.source");
-    if (rawSource.type !== "local-session" && rawSource.type !== "file") throw new Error("agentCompletion.source.type must be \"local-session\" or \"file\".");
+    if (rawSource.type !== "local-session" && rawSource.type !== "file" && rawSource.type !== "hook") throw new Error("agentCompletion.source.type must be \"local-session\", \"file\" or \"hook\".");
     completionSource = { type: rawSource.type, ...(rawSource.path === undefined ? {} : { path: stringAt(rawSource.path, "agentCompletion.source.path") }) };
   }
   let metadata: AgentCompletion["metadata"];
@@ -195,5 +197,6 @@ export function validateSession(value: unknown): RedpenSession {
     definitionOfDone,
     ...(proposedCriteria ? { proposedCriteria } : {}),
     ...(session.agentCompletion === undefined ? {} : { agentCompletion: validateCompletion(session.agentCompletion) }),
+    ...(session.codexBinding === undefined ? {} : { codexBinding: { sessionId: stringAt(objectAt(session.codexBinding, "codexBinding").sessionId, "codexBinding.sessionId") } }),
   };
 }

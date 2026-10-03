@@ -123,7 +123,7 @@ test("CLI exposes missing evidence and refuses an unsafe file path", async () =>
     const explain = await runCli(root, ["check", "--no-color"]);
     assert.equal(explain.exitCode, 1);
     const report = JSON.parse(await readFile(join(root, ".redpen", "report.json"), "utf8")) as { schemaVersion: number; definitionOfDoneResults: Array<{ title: string; status: string }> };
-    assert.equal(report.schemaVersion, 8);
+    assert.equal(report.schemaVersion, 9);
     assert.equal(report.definitionOfDoneResults.find((item) => item.title === "Implementation has marker")?.status, "failed");
     const guidance = await runCli(root, ["explain"]);
     assert.match(guidance.output, /Implementation has marker/);

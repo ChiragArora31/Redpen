@@ -60,7 +60,7 @@ export function renderTerminal(report: RedpenReport, color = process.stdout.isTT
     if (unresolvedDefinition > 0) lines.push(`${unresolvedDefinition} Definition-of-Done ${unresolvedDefinition === 1 ? "item remains" : "items remain"} unresolved.`);
     if (failedClaims > 0) lines.push(`${failedClaims} agent ${failedClaims === 1 ? "claim is" : "claims are"} contradicted by evidence.`);
     if (strictUnverifiedClaims > 0) lines.push(`${strictUnverifiedClaims} agent ${strictUnverifiedClaims === 1 ? "claim needs" : "claims need"} proof under the strict-claims policy.`);
-    if (report.summary.unverified > 0) lines.push("They may be correct. Redpen just can't prove them yet.");
+    if (report.summary.unverified > 0) lines.push("Unverified items still need evidence.");
     lines.push("Run `redpen explain` for the missing evidence.");
   }
   return lines.join("\n");

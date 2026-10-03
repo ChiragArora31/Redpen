@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0
+
+- Package a local Codex plugin beta with a task-contract skill and bundled CLI runtime
+- Add opt-in Stop hook completion capture and independent verification, scoped to an explicitly bound Codex conversation
+- Keep hooks nonblocking, idempotent, and safe against transcript-command execution
+- Add a focused `regression-test` verifier: current node:test assertion fails on the saved baseline and passes on the current snapshot
+- Reject setup failures, skipped tests and unsupported regression environments as proof
+- Add schema v9 task-input fingerprints so changed criteria and replaced claims invalidate old receipts
+- Add five reproducible real-repository demo cases and a beta testing/submission handoff
+- Keep existing sessions and older reports readable; older receipts require a fresh check for input freshness
+
 ## 0.3.0
 
 - Add reviewable Markdown evidence receipts with `redpen check --markdown` and non-executing `redpen report`

@@ -1,5 +1,24 @@
 # Redpen demo
 
+## v0.4 evidence cases
+
+```bash
+npm ci
+npm run demo:cases
+# Or record one case:
+npm run demo:cases -- regression
+npm run demo:cases -- missing-tests
+npm run demo:cases -- failed-build
+npm run demo:cases -- stale-evidence
+npm run demo:cases -- unsupported-claim
+```
+
+All checks run against real disposable Git repositories. Agent completion text is simulated and labelled as such. `regression` proves a named assertion fails on the saved baseline and passes after the fix. `missing-tests` contradicts “Added tests” even though existing tests pass. `failed-build` independently contradicts “Build succeeds.” `stale-evidence` refuses a saved receipt after edits. `unsupported-claim` uses strict policy to keep “No breaking changes” from earning DONE.
+
+For the strongest 20-second recording, show the task contract, the baseline-fail/current-pass regression result, and the still-unverified compatibility claim. For a failure story, show the missing-tests or failed-build case. Do not label these as observed customer incidents.
+
+For the actual plugin recording, follow [codex-plugin.md](./codex-plugin.md), start a real coding task with `$redpen`, show the agreed contract, and finish on the automatically captured completion receipt. This recording needs an enabled/trusted plugin in your account; do not substitute a mocked hook event and call it an interactive demo.
+
 ## Ten-second explanation
 
 Your coding agent says it is done. Redpen checks the task, the claims, and the repository evidence before agreeing.

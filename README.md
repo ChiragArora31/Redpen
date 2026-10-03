@@ -21,6 +21,8 @@ No breaking changes.
 
 Redpen checks the work.
 
+**New in v0.4:** a local [Codex plugin beta](./docs/codex-plugin.md). Ask “use Redpen for this task”; the skill establishes the contract and returns an evidence receipt. A trusted, explicitly bound completion hook can capture the final message and verify it automatically. No hosted service or directory listing is claimed.
+
 ```text
 REDPEN
 
@@ -174,6 +176,19 @@ Redpen complements CI. It connects checks to a specific task and the claims made
 
 `redpen check` collects fresh Git evidence and runs applicable tests and builds. Results are shown in the terminal and written to the versioned `.redpen/report.json` artifact.
 
+### Prove a regression, not just a changed test (v0.4)
+
+```bash
+redpen add "Null cursor regression" --type regression-test --path tests/null-cursor.test.mjs
+redpen check
+```
+
+The same focused test must fail with an assertion on the saved baseline and pass on the current snapshot. Both runs use temporary copies; your checkout and index stay untouched. This proves the tested case, not general correctness.
+
+The beta supports one named, unskipped JavaScript `node:test` case without external dependencies, builds, symlinks or submodules (up to 500 files / 25 MB). Setup errors remain `UNVERIFIED`; a test that already passed on the baseline is `FAILED` as regression evidence. Python and richer test-runner environments still use the existing test-pass checks.
+
+`npm run demo:cases` runs five real, disposable examples: regression proof, missing tests, a failed build, stale evidence, and an unsupported compatibility claim. Agent messages are explicitly simulated; the verification is real.
+
 ### Share the evidence (v0.3)
 
 ```bash
@@ -238,6 +253,8 @@ Exit code `0` means done, `1` means not done, and `2` means Redpen could not com
 | Capability | Status |
 | --- | --- |
 | Codex local session import | Supported |
+| Codex skill + opt-in completion hook | Local beta; trusted hooks required |
+| Focused Node regression reproduction | Dependency-free node:test beta |
 | Manual claims for other agents | Supported |
 | Node.js test and build discovery | Supported |
 | Python test discovery | Supported |
@@ -255,6 +272,10 @@ Codex's local JSONL format is not a stable public API. Its assumptions are isola
 - API-compatibility evidence
 - more language and build ecosystems
 - lightweight pull-request checks
+
+The immediate priority is ten real Codex beta users, evidence quality, and friction observed in their sessions. Directory submission follows validated installation and handoff behavior. See [the beta handoff](./docs/v0.4-beta.md).
+
+Report schema v9 adds an opaque task-input fingerprint: changing criteria or replacing claims invalidates saved receipts even without repository edits. Older reports still load but require a fresh check to establish this fingerprint.
 
 No dates. Evidence first.
 

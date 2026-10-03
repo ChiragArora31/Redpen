@@ -8,7 +8,7 @@ import { writeJsonReport } from "./reporters/json.js";
 import { verifierRegistry } from "./verifiers/registry.js";
 import { genericDefinitionOfDone } from "./session/definition.js";
 import { startSession } from "./session/lifecycle.js";
-import { clearSession, readLastReport, readSession } from "./session/store.js";
+import { clearSession, readLastReport, readSession, writeSession } from "./session/store.js";
 import { findRepositoryRoot } from "./repository/git.js";
 import { renderStatus } from "./reporters/status.js";
 import { createInterface } from "node:readline/promises";
@@ -23,6 +23,7 @@ import { initializeProjectConfig, readProjectConfig } from "./session/config.js"
 import { addCriterion, decideProposal } from "./session/criteria.js";
 import { createWorktreeSnapshot } from "./repository/git.js";
 import type { BuiltinVerifierType } from "./core/types.js";
+import { reportInputsChanged } from "./session/fingerprint.js";
 
 const HELP = `Redpen
 
@@ -58,6 +59,7 @@ Options:
   --strict-claims  Require proof for every agent claim
   --advisory   Make a new criterion non-blocking
   --propose    Queue a criterion until it is accepted
+  --codex-session <id>  Opt in to plugin completion checks for this Codex session
   --help       Show help
   --version    Show version`;
 
@@ -133,9 +135,11 @@ async function main(): Promise<void> {
 
   if (command === "start") {
     const commandArgs = args.slice(1);
-    rejectUnknownOptions(commandArgs, ["--force", "--template"]);
-    const task = positionalArgs(commandArgs, ["--template"]).join(" ");
+    rejectUnknownOptions(commandArgs, ["--force", "--template", "--codex-session"]);
+    const task = positionalArgs(commandArgs, ["--template", "--codex-session"]).join(" ");
+    const codexSession = optionValue(commandArgs, "--codex-session");
     const session = await startSession(process.cwd(), task, args.includes("--force"), optionValue(commandArgs, "--template") ?? "default");
+    if (codexSession) { session.codexBinding = { sessionId: codexSession }; await writeSession(session); }
     console.log(renderSessionStarted(session.task.description, session.definitionOfDone));
     return;
   }
@@ -241,7 +245,7 @@ async function main(): Promise<void> {
       return;
     }
     const report = await readLastReport(root);
-    const stale = Boolean(report?.evidenceFreshness && (await createWorktreeSnapshot(root)) !== report.evidenceFreshness.verifiedTree);
+    const stale = Boolean(report && (reportInputsChanged(session, report) || (report.evidenceFreshness && (await createWorktreeSnapshot(root)) !== report.evidenceFreshness.verifiedTree)));
     console.log(renderStatus(session, report, stale));
     return;
   }
@@ -252,7 +256,7 @@ async function main(): Promise<void> {
     if (!session) throw new Error("No active Redpen task. Start one with `redpen start \"<task>\"`.");
     const report = await readLastReport(root);
     if (!report || report.session?.id !== session.id) { console.log("No check has run for this task yet. Run `redpen check` first."); return; }
-    const stale = Boolean(report.evidenceFreshness && (await createWorktreeSnapshot(root)) !== report.evidenceFreshness.verifiedTree);
+    const stale = reportInputsChanged(session, report) || Boolean(report.evidenceFreshness && (await createWorktreeSnapshot(root)) !== report.evidenceFreshness.verifiedTree);
     console.log(renderExplanation(session, report, stale));
     return;
   }
@@ -263,7 +267,7 @@ async function main(): Promise<void> {
     if (!report) throw new Error("No Redpen report exists yet. Run `redpen check` first.");
     const session = await readSession(root);
     if (session && report.session?.id !== session.id) throw new Error("The saved report belongs to a different task. Run `redpen check` again.");
-    const stale = Boolean(report.evidenceFreshness && (await createWorktreeSnapshot(root)) !== report.evidenceFreshness.verifiedTree);
+    const stale = Boolean(session && reportInputsChanged(session, report)) || Boolean(report.evidenceFreshness && (await createWorktreeSnapshot(root)) !== report.evidenceFreshness.verifiedTree);
     console.log(renderMarkdown(report, stale));
     if (stale || report.verdict === "not_done") process.exitCode = 1;
     return;

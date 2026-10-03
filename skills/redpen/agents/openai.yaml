@@ -1,0 +1,4 @@
+interface:
+  display_name: "Redpen"
+  short_description: "Verify coding tasks and return evidence receipts"
+  default_prompt: "Use $redpen for this coding task: define done before editing and return the verified evidence receipt."

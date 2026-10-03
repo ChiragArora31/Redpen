@@ -34,7 +34,7 @@ export async function applyAgentImport(
   const parsed = parseClaims(rawMessage, source);
   const previous = session.agentCompletion;
   const sameSession = previous?.agent?.id === imported.agent.id && previous.agent.sessionId === imported.agent.sessionId;
-  const alreadyImported = sameSession && previous.rawMessage === rawMessage;
+  const alreadyImported = sameSession && previous.rawMessage === rawMessage && previous.metadata?.turnId === imported.metadata.turnId;
   const previousByKey = new Map(
     (sameSession ? previous.claims : []).filter((claim) => claim.source.type === "agent").map((claim) => [claimKey(claim.originalText), claim]),
   );

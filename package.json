@@ -1,6 +1,6 @@
 {
   "name": "redpen-cli",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A definition-of-done and verification layer for coding agents.",
   "author": "Chirag Arora",
   "type": "module",
@@ -13,7 +13,15 @@
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
-    "SECURITY.md"
+    "SECURITY.md",
+    "PRIVACY.md",
+    "plugin.json",
+    "skills",
+    "hooks",
+    ".agents/plugins/marketplace.json",
+    "docs/codex-plugin.md",
+    "docs/v0.4-beta.md",
+    "docs/demo.md"
   ],
   "scripts": {
     "clean": "node scripts/clean.mjs",
@@ -21,6 +29,8 @@
     "check": "tsc --noEmit",
     "test": "npm run build && tsc -p tsconfig.test.json && node --test .test-dist/tests/*.test.js",
     "demo": "npm run build --silent && ./scripts/demo.sh",
+    "demo:cases": "npm run build --silent && node scripts/demo-cases.mjs",
+    "smoke:package": "npm run build --silent && node scripts/package-smoke.mjs",
     "prepack": "npm run build"
   },
   "engines": {

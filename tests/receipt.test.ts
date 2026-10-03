@@ -34,7 +34,7 @@ test("strict claims makes unsupported claims block DONE without changing the def
     assert.equal(strict.exitCode, 1);
     assert.match(strict.stdout, /1 agent claim needs proof under the strict-claims policy/);
     const stored = JSON.parse(await readFile(join(root, ".redpen", "report.json"), "utf8")) as RedpenReport;
-    assert.equal(stored.schemaVersion, 8);
+    assert.equal(stored.schemaVersion, 9);
     assert.equal(stored.verificationPolicy?.requireAllClaims, true);
     assert.equal(stored.requiredSummary?.satisfied, true);
     assert.equal(stored.verdict, "not_done");

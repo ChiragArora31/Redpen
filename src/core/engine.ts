@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { realpath } from "node:fs/promises";
 import { createWorktreeSnapshot } from "../repository/git.js";
+import { sessionFingerprint } from "../session/fingerprint.js";
 
 function redactLocalPaths<T>(value: T, repositoryRoot: string): T {
   const repositoryAliases = [
@@ -31,6 +32,8 @@ export async function verifyRepository(
   const commandRuns = new Map<string, ReturnType<typeof runProcess>>();
   const context = {
     repository,
+    ...(session ? { baselineTree: session.repository.baselineTree } : {}),
+    ...(options.timeoutMs ? { timeoutMs: options.timeoutMs } : {}),
     runCommand: (spec: Parameters<typeof runProcess>[0]) => {
       const key = JSON.stringify([spec.command, spec.args]);
       let run = commandRuns.get(key);
@@ -93,7 +96,7 @@ export async function verifyRepository(
     } catch { agentRanInRepository = resolve(agentWorkingDirectory) === resolve(repository.root); }
   }
   const report: RedpenReport = {
-    schemaVersion: 8,
+    schemaVersion: 9,
     redpenVersion: REDPEN_VERSION,
     timestamp: new Date().toISOString(),
     repository: { root: "." },
@@ -105,7 +108,7 @@ export async function verifyRepository(
     agentClaimSummary: claimCounts,
     verificationPolicy: { requireAllClaims: options.strictClaims === true },
     verdict: done ? "done" : "not_done",
-    ...(session ? { session: { id: session.id, startedAt: session.startedAt }, task: session.task } : {}),
+    ...(session ? { session: { id: session.id, startedAt: session.startedAt, inputHash: sessionFingerprint(session) }, task: session.task } : {}),
     definitionOfDone,
     ...(session?.proposedCriteria ? { proposedCriteria: session.proposedCriteria } : {}),
     definitionOfDoneResults,

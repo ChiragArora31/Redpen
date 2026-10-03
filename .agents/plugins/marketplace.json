@@ -1,0 +1,12 @@
+{
+  "name": "redpen-beta",
+  "interface": { "displayName": "Redpen local beta" },
+  "plugins": [
+    {
+      "name": "redpen",
+      "source": { "source": "local", "path": "./" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "redpen",
+  "version": "0.4.0",
+  "description": "Task contracts and independent evidence receipts for coding agents. Done is a claim; evidence makes it true.",
+  "author": { "name": "Chirag Arora", "url": "https://github.com/ChiragArora31" },
+  "homepage": "https://github.com/ChiragArora31/Redpen",
+  "repository": "https://github.com/ChiragArora31/Redpen",
+  "license": "MIT",
+  "keywords": ["codex", "verification", "definition-of-done", "evidence"],
+  "extensions": {
+    "com.openai": {
+      "hooks": "./hooks/hooks.json",
+      "interface": {
+        "displayName": "Redpen",
+        "shortDescription": "Your coding agent says done. Check the evidence.",
+        "longDescription": "Define what done means before Codex starts. Capture completion claims, independently run project checks, and return a PROVEN / FAILED / UNVERIFIED evidence receipt. Local Codex beta; no hosted service or semantic correctness judging.",
+        "developerName": "Chirag Arora",
+        "category": "Productivity",
+        "capabilities": ["Read", "Write"],
+        "websiteURL": "https://github.com/ChiragArora31/Redpen",
+        "privacyPolicyURL": "https://github.com/ChiragArora31/Redpen/blob/main/PRIVACY.md",
+        "termsOfServiceURL": "https://github.com/ChiragArora31/Redpen/blob/main/LICENSE",
+        "defaultPrompt": ["Use Redpen for this coding task. Define done before editing, then return an evidence receipt."],
+        "brandColor": "#cf222e"
+      }
+    }
+  }
+}

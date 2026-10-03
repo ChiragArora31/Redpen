@@ -35,7 +35,7 @@ export function renderMarkdown(report: RedpenReport, stale = false): string {
     `**Claim policy:** ${report.verificationPolicy?.requireAllClaims ? "Every agent claim must be proven" : "Required criteria must be proven; contradicted claims block DONE"}`,
     "",
   ];
-  if (stale || report.evidenceFreshness?.stale) lines.push("> Evidence is stale. Repository files changed since this check; run `redpen check` again before sharing this receipt.", "");
+  if (stale || report.evidenceFreshness?.stale) lines.push("> Evidence is stale. Repository files or task inputs changed since this check; run `redpen check` again before sharing this receipt.", "");
   lines.push("## Definition of done", "");
   for (const [index, result] of report.definitionOfDoneResults.entries()) {
     const kind = report.definitionOfDone[index]?.required === false ? "advisory" : "required";

@@ -26,6 +26,7 @@ export function renderStatus(session: RedpenSession, report?: RedpenReport, stal
     `${session.agentCompletion?.claims.length ?? 0} ${(session.agentCompletion?.claims.length ?? 0) === 1 ? "claim" : "claims"}`,
     "",
   ];
+  if (session.codexBinding) lines.push("Codex completion hook:", "Enabled for the bound conversation (requires trusted plugin hooks)", "");
   if (session.agentCompletion?.agent) {
     lines.splice(lines.length - 3, 0,
       "Agent:",
@@ -45,10 +46,11 @@ export function renderStatus(session: RedpenSession, report?: RedpenReport, stal
   }
   lines.push("Last check:", time(report.timestamp), "");
   lines.push(`${report.summary.proven} proven · ${report.summary.failed} failed · ${report.summary.unverified} unverified`);
-  if (stale) { lines.push("", "CHECK NEEDED", "Repository files changed after the last check."); return lines.join("\n"); }
   const pendingClaims = (session.agentCompletion?.claims.length ?? 0) - (report.agentClaims?.length ?? 0);
   if (pendingClaims > 0) {
     lines.push("", `${pendingClaims} new ${pendingClaims === 1 ? "claim" : "claims"} awaiting verification.`, "", "CHECK NEEDED");
+  } else if (stale) {
+    lines.push("", "CHECK NEEDED", "Repository files or task inputs changed after the last check.");
   } else {
     lines.push("", report.verdict === "done" ? "DONE" : "NOT DONE");
     const unverifiedClaims = report.agentClaimResults.filter((result) => result.status === "unverified").length;

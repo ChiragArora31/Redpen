@@ -26,7 +26,8 @@ export type BuiltinVerifierType =
   | "command-succeeds"
   | "lint-pass"
   | "typecheck-pass"
-  | "coverage-threshold";
+  | "coverage-threshold"
+  | "regression-test";
 
 export type AgentClaimType =
   | "tests-pass"
@@ -55,7 +56,7 @@ export interface AgentCompletion {
   message: string;
   recordedAt: string;
   importedAt?: string;
-  source?: { type: "local-session" | "file"; path?: string };
+  source?: { type: "local-session" | "file" | "hook"; path?: string };
   rawMessage?: string;
   metadata?: {
     startedAt?: string;
@@ -100,6 +101,8 @@ export interface RedpenSession {
   definitionOfDone: DefinitionOfDoneItem[];
   proposedCriteria?: DefinitionOfDoneItem[];
   agentCompletion?: AgentCompletion;
+  /** Explicit opt-in: only this Codex session may trigger completion capture. */
+  codexBinding?: { sessionId: string };
 }
 
 export interface FileChange {
@@ -142,6 +145,8 @@ export interface RepositoryEvidence {
 
 export interface VerificationContext {
   repository: RepositoryEvidence;
+  baselineTree?: string;
+  timeoutMs?: number;
   runCommand(spec: CommandSpec): Promise<CommandEvidence>;
 }
 
@@ -151,7 +156,7 @@ export interface Verifier {
 }
 
 export interface RedpenReport {
-  schemaVersion: 6 | 7 | 8;
+  schemaVersion: 6 | 7 | 8 | 9;
   redpenVersion: string;
   timestamp: string;
   repository: {
@@ -168,6 +173,7 @@ export interface RedpenReport {
   session?: {
     id: string;
     startedAt: string;
+    inputHash?: string;
   };
   task?: {
     description: string;

@@ -5,6 +5,7 @@ import { testsChangedVerifier } from "./tests-changed.js";
 import { fileChangedVerifier } from "./file-changed.js";
 import { contentMatchesVerifier, fileExistsVerifier } from "./files.js";
 import { coverageThresholdVerifier } from "./coverage.js";
+import { regressionTestVerifier } from "./regression.js";
 
 export const verifierRegistry: Record<BuiltinVerifierType, Verifier> = {
   "changes-exist": changesVerifier,
@@ -18,4 +19,5 @@ export const verifierRegistry: Record<BuiltinVerifierType, Verifier> = {
   "lint-pass": lintPassVerifier,
   "typecheck-pass": typecheckPassVerifier,
   "coverage-threshold": coverageThresholdVerifier,
+  "regression-test": regressionTestVerifier,
 };

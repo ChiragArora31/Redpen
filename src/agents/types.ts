@@ -24,7 +24,7 @@ export interface AgentImportContext {
 
 export interface ImportedAgentCompletion {
   agent: { id: string; name: string; sessionId?: string };
-  source: { type: "local-session" | "file"; path?: string };
+  source: { type: "local-session" | "file" | "hook"; path?: string };
   rawMessage: string;
   metadata: {
     startedAt?: string;
