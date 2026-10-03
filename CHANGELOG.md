@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1 (release candidate)
+
+- Build a separate hook-free public plugin ZIP with the bundled ESM runtime, skill, icons, starter prompts, and policy files
+- Validate artifact contents, metadata, imports, and deterministic checksums without changing the hook-enabled local beta
+- Clarify execution prerequisites, approvals, completion capture, and evidence limits in the skill
+- Expand privacy and support documentation and test the extracted ZIP against a real task repository
+- Public directory publication remains subject to developer verification, portal scans, and review
+
 ## 0.4.0
 
 - Package a local Codex plugin beta with a task-contract skill and bundled CLI runtime

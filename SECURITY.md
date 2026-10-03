@@ -6,6 +6,8 @@ Please report vulnerabilities privately through GitHub Security Advisories for t
 
 ## Trust boundaries
 
+The public submission package is skills-only and contains no lifecycle hooks or remote MCP service. The optional hook described below is distributed only with the separate local beta. Installing a skill does not grant repository access or permission to run project commands; the client must provide the environment and enforce its normal approvals.
+
 Redpen runs test and build commands discovered from the repository. Those commands execute with the current user's permissions; review unfamiliar repositories before running `redpen check`.
 
 Imported Codex transcripts are untrusted input. Redpen reads the final completion message and compact metadata, but never executes transcript commands or accepts reported command results as proof. Verification commands are run independently.

@@ -21,7 +21,7 @@ No breaking changes.
 
 Redpen checks the work.
 
-**New in v0.4:** a local [Codex plugin beta](./docs/codex-plugin.md). Ask “use Redpen for this task”; the skill establishes the contract and returns an evidence receipt. A trusted, explicitly bound completion hook can capture the final message and verify it automatically. No hosted service or directory listing is claimed.
+**Plugin:** the [public submission candidate](./docs/public-plugin.md) bundles the skill and verification runtime. Ask “use Redpen for this task”; it establishes the contract and returns an evidence receipt in a shell-capable coding environment. It needs Node.js 18+, Git, and repository access. Directory approval is pending, not claimed. Optional completion hooks remain a separate [local beta](./docs/codex-plugin.md).
 
 ```text
 REDPEN

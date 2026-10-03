@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .test-dist/
+artifacts/
 .redpen/*
 !.redpen/config.json
 *.log

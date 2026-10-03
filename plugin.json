@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "redpen",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Task contracts and independent evidence receipts for coding agents. Done is a claim; evidence makes it true.",
   "author": { "name": "Chirag Arora", "url": "https://github.com/ChiragArora31" },
   "homepage": "https://github.com/ChiragArora31/Redpen",
@@ -13,16 +13,26 @@
       "hooks": "./hooks/hooks.json",
       "interface": {
         "displayName": "Redpen",
-        "shortDescription": "Your coding agent says done. Check the evidence.",
+        "shortDescription": "Evidence for coding tasks",
         "longDescription": "Define what done means before Codex starts. Capture completion claims, independently run project checks, and return a PROVEN / FAILED / UNVERIFIED evidence receipt. Local Codex beta; no hosted service or semantic correctness judging.",
         "developerName": "Chirag Arora",
         "category": "Productivity",
         "capabilities": ["Read", "Write"],
         "websiteURL": "https://github.com/ChiragArora31/Redpen",
+        "supportURL": "https://github.com/ChiragArora31/Redpen/blob/main/SUPPORT.md",
         "privacyPolicyURL": "https://github.com/ChiragArora31/Redpen/blob/main/PRIVACY.md",
         "termsOfServiceURL": "https://github.com/ChiragArora31/Redpen/blob/main/LICENSE",
-        "defaultPrompt": ["Use Redpen for this coding task. Define done before editing, then return an evidence receipt."],
-        "brandColor": "#cf222e"
+        "defaultPrompt": [
+          "Use Redpen to define done before fixing the pagination bug, then verify the work.",
+          "Check this coding task with Redpen and show which claims still need evidence.",
+          "Show the latest Redpen receipt and tell me whether it is still current."
+        ],
+        "brandColor": "#cf222e",
+        "brandColorDark": "#ff7b86",
+        "composerIcon": "./assets/icon.svg",
+        "composerIconDark": "./assets/icon-dark.svg",
+        "logo": "./assets/logo.svg",
+        "logoDark": "./assets/logo-dark.svg"
       }
     }
   }
